@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "cobbleguard",
+  "version": "${version}",
+  "name": "CobbleGuard",
+  "description": "",
+  "authors": ["Zanckor"],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "dev.zanckor.cobbleguard.CobbleGuard"
+    ]
+  },
+  "mixins": [
+    "cobbleguard.mixins.json"
+  ]
+}

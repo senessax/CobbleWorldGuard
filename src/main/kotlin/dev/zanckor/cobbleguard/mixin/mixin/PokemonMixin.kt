@@ -8,8 +8,10 @@ import com.cobblemon.mod.common.pokemon.Pokemon
 import dev.zanckor.cobbleguard.core.brain.sensor.NearestHostileMobSensor
 import dev.zanckor.cobbleguard.core.brain.task.AttackTask
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
+import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.entity.ai.Brain
 import net.minecraft.world.entity.ai.memory.MemoryModuleType
@@ -31,6 +33,16 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
 
     @Shadow
     val pokemon: Pokemon? = null
+
+    override fun hurt(damageSource: DamageSource, damage: Float): Boolean {
+        if(pokemon != null) {
+            pokemon.currentHealth -= damage.toInt()
+            health = pokemon.currentHealth.toFloat()
+        }
+
+        return super.hurt(damageSource, damage)
+    }
+
     override fun getBestMoveAgainst(target: LivingEntity?): Move? {
         val isPokemon = target is PokemonEntity
 
@@ -41,7 +53,7 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
                 val secondaryTypeEffectiveness = if(pokemonTarget.secondaryType != null) getMoveEffectiveness(it, pokemonTarget.secondaryType!!) else 0.0
 
                 Triple(it, primaryTypeEffectiveness + secondaryTypeEffectiveness, it.power)
-            }.sortedBy { it.second + it.third }
+            }.sortedWith(::compareMoves)
 
             return moves.last().first
         } else {
@@ -49,9 +61,22 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
         }
     }
 
-    override fun useMove(move: Move?, target: LivingEntity?) {
-        if(move != null) {
-            val damage = move.power * getMoveEffectiveness(move, (target as PokemonEntity).pokemon.primaryType)
+    fun compareMoves(move1: Triple<Move, Double, Double>, move2: Triple<Move, Double, Double>): Int {
+        val move1Value = move1.second * move1.third
+        val move2Value = move2.second * move2.third
+
+        return move1Value.compareTo(move2Value)
+    }
+
+    override fun useMove(move: Move?, target: PathfinderMob?) {
+        if(move != null && target != null) {
+            val effectiveness = if(target is PokemonEntity) getMoveEffectiveness(move, target.pokemon.primaryType) else 1.0
+            val power = if(move.power == 0.0) 20.0 else move.power
+
+            val level = pokemon!!.level
+            val damage = (power * effectiveness) * (level / 100.0)
+
+            target.target = this
             target.hurt(damageSources().mobAttack(this), damage.toFloat())
         }
     }

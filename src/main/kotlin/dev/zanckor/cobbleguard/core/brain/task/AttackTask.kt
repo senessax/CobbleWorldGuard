@@ -5,6 +5,8 @@ import com.mojang.datafixers.util.Pair
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.util.Timer
 import net.minecraft.core.BlockPos
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.entity.ai.memory.MemoryModuleType.NEAREST_HOSTILE
 import net.minecraft.world.entity.ai.memory.MemoryStatus
@@ -22,12 +24,13 @@ class AttackTask : ExtendedBehaviour<PokemonEntity>() {
         }
 
         val isNearEnough = moveToPosition(pokemon, target.blockPosition(), 10.0)
-        pokemon.target = pokemon.brain.getMemory(NEAREST_HOSTILE).get()
+        pokemon.target = target
 
-        if(isNearEnough && Timer.hasReached("${pokemon.stringUUID}_attack_cooldown", true)) {
-            Timer.start("${pokemon.stringUUID}_attack_cooldown", 1.0)
+        if(isNearEnough && Timer.hasReached("${pokemon.stringUUID}_attack_cooldown", true) && target is PathfinderMob) {
+            val hostilemon = pokemon as Hostilemon
+            hostilemon.useMove(hostilemon.getBestMoveAgainst(target), target)
 
-            target.hurt(pokemon.damageSources().mobAttack(pokemon), 10.0f)
+            Timer.start("${pokemon.stringUUID}_attack_cooldown", 0.6)
         }
 
         super.start(pokemon)

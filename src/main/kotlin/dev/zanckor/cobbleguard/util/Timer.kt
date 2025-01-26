@@ -1,9 +1,10 @@
-package dev.zanckor.cobbleguard.util;
+package dev.zanckor.cobbleguard.util
 
-import java.util.HashMap;
+import java.util.HashMap
 
-public class Timer {
-    private static final HashMap<String, Long> TIMERS = new HashMap<>();
+
+object Timer {
+    private val TIMERS = HashMap<String, Long>()
 
     /**
      * Start a timer with a identifier name and time in seconds to reach.
@@ -12,8 +13,8 @@ public class Timer {
      * @param name          The identifier name of the timer.
      * @param timeInSeconds The time in seconds to reach.
      */
-    public static void start(String name, double timeInSeconds) {
-        TIMERS.put(name, (long) (System.currentTimeMillis() + (timeInSeconds * 1000)));
+    fun start(name: String, timeInSeconds: Double) {
+        TIMERS[name] = (System.currentTimeMillis() + (timeInSeconds * 1000)).toLong()
     }
 
     /**
@@ -22,8 +23,8 @@ public class Timer {
      * @param name The identifier name of the timer.
      * @return True if the timer has been initialized.
      */
-    public static boolean hasTimer(String name) {
-        return TIMERS.containsKey(name);
+    fun hasTimer(name: String): Boolean {
+        return TIMERS.containsKey(name)
     }
 
     /**
@@ -33,19 +34,19 @@ public class Timer {
      * @param removeOnReach Remove the timer when it reaches the timeInSeconds.
      * @return True if the timer has reached the timeInSeconds.
      */
-    public static boolean hasReached(String name, boolean removeOnReach) {
+    fun hasReached(name: String, removeOnReach: Boolean): Boolean {
         if (TIMERS.containsKey(name)) {
-            long timer = TIMERS.get(name);
+            val timer = TIMERS[name]!!
 
             if (System.currentTimeMillis() >= timer) {
-                if (removeOnReach) TIMERS.remove(name);
-                return true;
+                if (removeOnReach) TIMERS.remove(name)
+                return true
             }
         } else {
-            return true;
+            return true
         }
 
-        return false;
+        return false
     }
 
     /**
@@ -55,20 +56,20 @@ public class Timer {
      * @param timeInSeconds The time in seconds to reach.
      * @return True if the timer has reached the timeInSeconds.
      */
-    public static boolean hasReached(String name, int timeInSeconds) {
+    fun hasReached(name: String, timeInSeconds: Int): Boolean {
         if (TIMERS.containsKey(name)) {
-            long timer = TIMERS.get(name);
+            val timer = TIMERS[name]!!
 
             if (System.currentTimeMillis() >= timer) {
-                start(name, timeInSeconds);
-                return true;
+                start(name, timeInSeconds.toDouble())
+                return true
             }
         } else {
-            start(name, timeInSeconds);
-            return true;
+            start(name, timeInSeconds.toDouble())
+            return true
         }
 
-        return false;
+        return false
     }
 
     /**
@@ -77,8 +78,8 @@ public class Timer {
      * @param name The identifier name of the timer.
      * @return True if the timer is running.
      */
-    public static boolean isRunning(String name) {
-        return TIMERS.containsKey(name) && hasReached(name, false);
+    fun isRunning(name: String): Boolean {
+        return TIMERS.containsKey(name) && hasReached(name, false)
     }
 
     /**
@@ -87,9 +88,9 @@ public class Timer {
      * @param name          The identifier name of the timer.
      * @param timeInSeconds The time in seconds to add.
      */
-    public static void addTime(String name, long timeInSeconds) {
+    fun addTime(name: String, timeInSeconds: Long) {
         if (TIMERS.containsKey(name)) {
-            TIMERS.put(name, TIMERS.get(name) + (timeInSeconds * 1000));
+            TIMERS[name] = TIMERS[name]!! + (timeInSeconds * 1000)
         }
     }
 
@@ -99,11 +100,11 @@ public class Timer {
      * @param name The identifier name of the timer.
      * @return The time in seconds to finish the timer.
      */
-    public static int timeToFinish(String name) {
+    fun timeToFinish(name: String): Int {
         if (TIMERS.containsKey(name)) {
-            return (int) ((TIMERS.get(name) - System.currentTimeMillis()) / 1000);
+            return ((TIMERS[name]!! - System.currentTimeMillis()) / 1000).toInt()
         }
 
-        return -1;
+        return -1
     }
 }

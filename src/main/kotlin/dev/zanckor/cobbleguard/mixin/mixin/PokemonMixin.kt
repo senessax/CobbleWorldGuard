@@ -5,13 +5,14 @@ import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.battles.ai.typeEffectiveness
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.pokemon.Pokemon
-import dev.zanckor.cobbleguard.core.brain.sensor.NearestHostileMobSensor
+import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType
+import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
+import dev.zanckor.cobbleguard.core.brain.sensor.NearestOwnerTargetSensor
 import dev.zanckor.cobbleguard.core.brain.task.AttackTask
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.entity.ai.Brain
 import net.minecraft.world.entity.ai.memory.MemoryModuleType
@@ -94,9 +95,9 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
     override fun getCoreTasks(): BrainActivityGroup<out PokemonMixin> {
         return BrainActivityGroup.coreTasks(
             AttackTask()
-                .startCondition { entity -> entity!!.brain.getMemory(MemoryModuleType.NEAREST_HOSTILE).isPresent }
-                .stopIf { entity -> entity!!.brain.getMemory(MemoryModuleType.NEAREST_HOSTILE).isEmpty }
-                .whenStopping { entity -> entity!!.brain.eraseMemory(MemoryModuleType.NEAREST_HOSTILE) }
+                .startCondition { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent }
+                .stopIf { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).get().isDeadOrDying }
+                .whenStopping { entity -> entity!!.brain.eraseMemory(NEAREST_OWNER_TARGET) }
         )
     }
 
@@ -104,7 +105,7 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
     override fun getSensors(): MutableList<out ExtendedSensor<out PokemonMixin>> {
         val sensors = mutableListOf<ExtendedSensor<out PokemonMixin>>()
 
-        sensors.add(NearestHostileMobSensor() as ExtendedSensor<out PokemonMixin>)
+        sensors.add(NearestOwnerTargetSensor() as ExtendedSensor<out PokemonMixin>)
 
         return sensors
     }

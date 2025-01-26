@@ -29,13 +29,7 @@ class NearestHostileMobSensor : ExtendedSensor<LivingEntity>() {
         val hasPlayerAttacker = (playerAttacker != null && playerAttacker.isAlive)
         val hasPlayerTarget = (playerTarget != null && playerTarget.isAlive)
 
-        var target: LivingEntity? = null
-
-        if(hasPlayerAttacker) {
-            target = playerAttacker
-        } else if(hasPlayerTarget) {
-            target = playerTarget
-        }
+        val target = if(hasPlayerTarget) playerTarget else if(hasPlayerAttacker) playerAttacker else null
 
         if(target != null) {
             entity.brain.setMemory(MemoryModuleType.NEAREST_HOSTILE, target)
@@ -45,6 +39,6 @@ class NearestHostileMobSensor : ExtendedSensor<LivingEntity>() {
     }
 
     private fun isWildPokemon(entity: PokemonEntity): Boolean {
-        return entity.pokemon.getOwnerPlayer() == null;
+        return entity.pokemon.getOwnerPlayer() == null
     }
 }

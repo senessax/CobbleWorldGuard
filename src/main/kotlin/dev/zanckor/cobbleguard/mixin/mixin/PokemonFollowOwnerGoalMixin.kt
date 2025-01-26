@@ -11,12 +11,9 @@ abstract class PokemonFollowOwnerGoalMixin {
 
     @Inject(method = ["canContinueToUse"], at = [At("HEAD")], cancellable = true)
     private fun canContinueToUse(cir: CallbackInfoReturnable<Boolean>) {
-        cir.returnValue = false
     }
 
     @Inject(method = ["canUse"], at = [At("HEAD")], cancellable = true)
     private fun canUse(cir: CallbackInfoReturnable<Boolean>) {
-        println("canUse")
-        cir.returnValue = false
     }
 }

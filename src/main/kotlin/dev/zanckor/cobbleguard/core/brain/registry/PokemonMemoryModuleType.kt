@@ -10,6 +10,7 @@ import java.util.*
 
 object PokemonMemoryModuleType {
     val NEAREST_OWNER_TARGET: MemoryModuleType<LivingEntity> = register("nearest_owner_target")
+    val NEAREST_WILD_POKEMON_TARGET: MemoryModuleType<LivingEntity> = register("nearest_wild_pokemon_target")
 
     private fun <U> register(key: String): MemoryModuleType<U> {
         return Registry.register(BuiltInRegistries.MEMORY_MODULE_TYPE,

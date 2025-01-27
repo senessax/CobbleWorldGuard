@@ -11,7 +11,7 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.entity.ai.memory.MemoryStatus
 import net.tslat.smartbrainlib.api.core.behaviour.ExtendedBehaviour
 
-class AttackTask : ExtendedBehaviour<PokemonEntity>() {
+class DefendOwnerTask : ExtendedBehaviour<PokemonEntity>() {
     override fun getMemoryRequirements(): MutableList<Pair<MemoryModuleType<*>, MemoryStatus>> {
         return mutableListOf(Pair(NEAREST_OWNER_TARGET, MemoryStatus.VALUE_PRESENT))
     }

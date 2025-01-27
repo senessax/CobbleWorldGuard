@@ -1,21 +1,20 @@
 package dev.zanckor.cobbleguard.mixin.mixin
 
 import com.cobblemon.mod.common.api.moves.Move
+import com.cobblemon.mod.common.api.moves.MoveSet
 import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.battles.ai.typeEffectiveness
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.pokemon.Pokemon
-import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
 import dev.zanckor.cobbleguard.core.brain.sensor.NearestOwnerTargetSensor
-import dev.zanckor.cobbleguard.core.brain.task.AttackTask
+import dev.zanckor.cobbleguard.core.brain.task.DefendOwnerTask
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.entity.ai.Brain
-import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.level.Level
 import net.tslat.smartbrainlib.api.SmartBrainOwner
 import net.tslat.smartbrainlib.api.core.BrainActivityGroup
@@ -49,12 +48,8 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
 
         if(isPokemon) {
             val pokemonTarget = (target as PokemonEntity).pokemon
-            val moves = pokemon!!.moveSet.map {
-                val primaryTypeEffectiveness = getMoveEffectiveness(it, pokemonTarget.primaryType)
-                val secondaryTypeEffectiveness = if(pokemonTarget.secondaryType != null) getMoveEffectiveness(it, pokemonTarget.secondaryType!!) else 0.0
-
-                Triple(it, primaryTypeEffectiveness + secondaryTypeEffectiveness, it.power)
-            }.sortedWith(::compareMoves)
+            val moves = mapMoves(pokemon!!.moveSet, pokemonTarget)
+                .sortedWith { move1, move2 -> compareMoves(move1, move2) }
 
             return moves.last().first
         } else {
@@ -62,7 +57,22 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
         }
     }
 
-    fun compareMoves(move1: Triple<Move, Double, Double>, move2: Triple<Move, Double, Double>): Int {
+    private fun mapMoves(moveSet: MoveSet, pokemonTarget: Pokemon): List<Triple<Move, Double, Double>> {
+        val mappedMoves = mutableListOf<Triple<Move, Double, Double>>()
+
+        for (move in moveSet) {
+            val primaryTypeEffectiveness = getMoveEffectiveness(move, pokemonTarget.primaryType)
+            val secondaryTypeEffectiveness = pokemonTarget.secondaryType?.let {
+                getMoveEffectiveness(move, it)
+            } ?: 0.0
+
+            mappedMoves.add(Triple(move, primaryTypeEffectiveness + secondaryTypeEffectiveness, move.power))
+        }
+
+        return mappedMoves
+    }
+
+    private fun compareMoves(move1: Triple<Move, Double, Double>, move2: Triple<Move, Double, Double>): Int {
         val move1Value = move1.second * move1.third
         val move2Value = move2.second * move2.third
 
@@ -83,18 +93,12 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
     }
 
     override fun getMoveEffectiveness(move: Move?, targetType: ElementalType): Double {
-        val type = move!!.type
-
-        typeEffectiveness[type]?.let {
-            return it[targetType] ?: 0.0
-        }
-
-        return 0.0
+        return typeEffectiveness[move!!.type]?.get(targetType) ?: 0.0
     }
 
     override fun getCoreTasks(): BrainActivityGroup<out PokemonMixin> {
         return BrainActivityGroup.coreTasks(
-            AttackTask()
+            DefendOwnerTask()
                 .startCondition { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent }
                 .stopIf { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).get().isDeadOrDying }
                 .whenStopping { entity -> entity!!.brain.eraseMemory(NEAREST_OWNER_TARGET) }

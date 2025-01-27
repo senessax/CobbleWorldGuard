@@ -5,13 +5,11 @@ import com.mojang.datafixers.util.Pair
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.util.Timer
-import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.entity.ai.memory.MemoryStatus
-import net.tslat.smartbrainlib.api.core.behaviour.ExtendedBehaviour
 
-class DefendOwnerTask : ExtendedBehaviour<PokemonEntity>() {
+class DefendOwnerTask : PokemonTask() {
     override fun getMemoryRequirements(): MutableList<Pair<MemoryModuleType<*>, MemoryStatus>> {
         return mutableListOf(Pair(NEAREST_OWNER_TARGET, MemoryStatus.VALUE_PRESENT))
     }
@@ -23,28 +21,20 @@ class DefendOwnerTask : ExtendedBehaviour<PokemonEntity>() {
         }
 
         val isNearEnough = moveToPosition(pokemon, target.blockPosition(), 10.0)
+        val canAttack = Timer.hasReached("${pokemon.stringUUID}_attack_cooldown", true)
+        val isPathfinderMob = target is PathfinderMob
         pokemon.target = target
 
-        if(isNearEnough && Timer.hasReached("${pokemon.stringUUID}_attack_cooldown", true) && target is PathfinderMob) {
-            val hostilemon = pokemon as Hostilemon
-            hostilemon.useMove(hostilemon.getBestMoveAgainst(target), target)
-
-            Timer.start("${pokemon.stringUUID}_attack_cooldown", 0.6)
+        if(isNearEnough && canAttack && isPathfinderMob) {
+            attack(pokemon, target as PathfinderMob)
         }
 
         super.start(pokemon)
     }
 
-    private fun moveToPosition(entity: PokemonEntity, movePosition: BlockPos, distance: Double): Boolean {
-        val distanceToMove: Double = entity.distanceToSqr(movePosition.center)
-        val navigationPosition: BlockPos? = entity.getNavigation().targetPos
-
-        // If the entity is more than X blocks away from the position, and the entity is not already moving to the position, move to it
-        if (distanceToMove > distance && (navigationPosition == null || navigationPosition.distSqr(movePosition) > 5.0)) {
-            entity.getNavigation()
-                .moveTo(movePosition.x.toDouble(), movePosition.y.toDouble(), movePosition.z.toDouble(), 1.0)
-        }
-
-        return distanceToMove <= (distance * 1.25)
+    private fun attack(pokemon: PokemonEntity, target: PathfinderMob) {
+        val hostilemon = pokemon as Hostilemon
+        hostilemon.useMove(hostilemon.getBestMoveAgainst(target), target)
+        Timer.start("${pokemon.stringUUID}_attack_cooldown", 0.6)
     }
 }

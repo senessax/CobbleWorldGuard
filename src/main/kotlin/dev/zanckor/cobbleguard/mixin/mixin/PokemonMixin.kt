@@ -7,25 +7,31 @@ import com.cobblemon.mod.common.battles.ai.typeEffectiveness
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.pokemon.Pokemon
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
+import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_WILD_POKEMON_TARGET
 import dev.zanckor.cobbleguard.core.brain.sensor.NearestOwnerTargetSensor
+import dev.zanckor.cobbleguard.core.brain.sensor.NearestWildTargetSensor
 import dev.zanckor.cobbleguard.core.brain.task.DefendOwnerTask
+import dev.zanckor.cobbleguard.core.brain.task.WildBehaviourTask
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.entity.ai.Brain
 import net.minecraft.world.level.Level
 import net.tslat.smartbrainlib.api.SmartBrainOwner
 import net.tslat.smartbrainlib.api.core.BrainActivityGroup
 import net.tslat.smartbrainlib.api.core.SmartBrainProvider
+import net.tslat.smartbrainlib.api.core.behaviour.AllApplicableBehaviours
 import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
 import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.Shadow
 
 @Mixin(PokemonEntity::class)
-class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
-                   override var isHostile: Boolean
+class PokemonMixin(
+    entityType: EntityType<out PathfinderMob>, level: Level,
+    override var isHostile: Boolean
 ) :
     PathfinderMob(entityType, level),
     Hostilemon,
@@ -35,7 +41,7 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
     val pokemon: Pokemon? = null
 
     override fun hurt(damageSource: DamageSource, damage: Float): Boolean {
-        if(pokemon != null) {
+        if (pokemon != null) {
             pokemon.currentHealth -= damage.toInt()
             health = pokemon.currentHealth.toFloat()
         }
@@ -46,7 +52,7 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
     override fun getBestMoveAgainst(target: LivingEntity?): Move? {
         val isPokemon = target is PokemonEntity
 
-        if(isPokemon) {
+        if (isPokemon) {
             val pokemonTarget = (target as PokemonEntity).pokemon
             val moves = mapMoves(pokemon!!.moveSet, pokemonTarget)
                 .sortedWith { move1, move2 -> compareMoves(move1, move2) }
@@ -79,16 +85,17 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
         return move1Value.compareTo(move2Value)
     }
 
-    override fun useMove(move: Move?, target: PathfinderMob?) {
-        if(move != null && target != null) {
-            val effectiveness = if(target is PokemonEntity) getMoveEffectiveness(move, target.pokemon.primaryType) else 1.0
-            val power = if(move.power == 0.0) 20.0 else move.power
+    override fun useMove(move: Move?, target: LivingEntity?) {
+        if (move != null && target != null) {
+            val effectiveness =
+                if (target is PokemonEntity) getMoveEffectiveness(move, target.pokemon.primaryType) else 1.0
+            val power = if (move.power == 0.0) 20.0 else move.power
 
             val level = pokemon!!.level
             val damage = (power * effectiveness) * (level / 100.0)
 
-            target.target = this
             target.hurt(damageSources().mobAttack(this), damage.toFloat())
+            if (target is Mob) target.target = this
         }
     }
 
@@ -98,10 +105,15 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
 
     override fun getCoreTasks(): BrainActivityGroup<out PokemonMixin> {
         return BrainActivityGroup.coreTasks(
-            DefendOwnerTask()
-                .startCondition { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent }
-                .stopIf { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).get().isDeadOrDying }
-                .whenStopping { entity -> entity!!.brain.eraseMemory(NEAREST_OWNER_TARGET) }
+            AllApplicableBehaviours(
+                DefendOwnerTask()
+                    .startCondition { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent }
+                    .stopIf { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).get().isDeadOrDying },
+
+                WildBehaviourTask()
+                    .startCondition { entity -> entity!!.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).isPresent }
+                    .stopIf { entity -> entity!!.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).get().isDeadOrDying }
+            )
         )
     }
 
@@ -110,6 +122,7 @@ class PokemonMixin(entityType: EntityType<out PathfinderMob>, level: Level,
         val sensors = mutableListOf<ExtendedSensor<out PokemonMixin>>()
 
         sensors.add(NearestOwnerTargetSensor() as ExtendedSensor<out PokemonMixin>)
+        sensors.add(NearestWildTargetSensor() as ExtendedSensor<out PokemonMixin>)
 
         return sensors
     }

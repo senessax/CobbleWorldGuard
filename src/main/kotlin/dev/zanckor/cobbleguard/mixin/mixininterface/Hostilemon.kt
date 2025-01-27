@@ -11,7 +11,7 @@ interface Hostilemon {
 
     fun getBestMoveAgainst(target: LivingEntity?): Move?
 
-    fun useMove(move: Move?, target: PathfinderMob?)
+    fun useMove(move: Move?, target: LivingEntity?)
 
     fun getMoveEffectiveness(move: Move?, targetType: ElementalType): Double
 }

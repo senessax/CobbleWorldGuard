@@ -19,7 +19,7 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
     }
 
     override fun doTick(level: ServerLevel, entity: LivingEntity) {
-        if(isWildPokemon(entity as PokemonEntity)) {
+        if(isWildPokemon(entity as PokemonEntity) || (entity.target != null && entity.target!!.isAlive)) {
             return
         }
 

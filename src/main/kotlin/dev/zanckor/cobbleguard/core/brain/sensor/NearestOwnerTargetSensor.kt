@@ -42,6 +42,6 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
     }
 
     private fun isWildPokemon(entity: PokemonEntity): Boolean {
-        return entity.pokemon.getOwnerPlayer() == null
+        return entity.pokemon.getOwnerUUID() == null
     }
 }

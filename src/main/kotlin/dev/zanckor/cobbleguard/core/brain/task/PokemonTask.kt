@@ -1,10 +1,15 @@
 package dev.zanckor.cobbleguard.core.brain.task
 
+import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
+import dev.zanckor.cobbleguard.util.Timer
 import net.minecraft.core.BlockPos
+import net.minecraft.world.entity.LivingEntity
 import net.tslat.smartbrainlib.api.core.behaviour.ExtendedBehaviour
 
 abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
+
 
     /**
      * Moves the entity to a position. If the entity is more than X blocks away from the position, and the entity is not already moving to the position, move to it
@@ -19,10 +24,24 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
 
         // If the entity is more than X blocks away from the position, and the entity is not already moving to the position, move to it
         if (distanceToMove > distance && (navigationPosition == null || navigationPosition.distSqr(movePosition) > 5.0)) {
-            entity.getNavigation()
-                .moveTo(movePosition.x.toDouble(), movePosition.y.toDouble(), movePosition.z.toDouble(), 1.0)
+            val speed = entity.pokemon.getStat(Stats.SPEED).toDouble() / 150.0
+
+            entity.getNavigation().moveTo(movePosition.x.toDouble(), movePosition.y.toDouble(), movePosition.z.toDouble(), speed)
         }
 
         return distanceToMove <= (distance * 1.25)
+    }
+
+    /**
+     * Attacks the target, using the best move against it.
+     * It also starts a cooldown for the attack, so the entity doesn't attack every tick
+     * @param pokemon The entity that will attack
+     * @param target The entity that will be attacked
+     * @see Hostilemon.getBestMoveAgainst
+     */
+    protected fun attack(pokemon: PokemonEntity, target: LivingEntity) {
+        val hostilemon = pokemon as Hostilemon
+        hostilemon.useMove(hostilemon.getBestMoveAgainst(target), target)
+        Timer.start("${pokemon.stringUUID}_attack_cooldown", 0.6)
     }
 }

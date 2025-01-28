@@ -19,21 +19,17 @@ class NearestWildTargetSensor : ExtendedSensor<LivingEntity>() {
     }
 
     override fun doTick(level: ServerLevel, entity: LivingEntity) {
-        if(!isWildPokemon(entity as PokemonEntity) || (entity.target != null && entity.target!!.isAlive)) {
-            return
-        }
+        val pokemonEntity = entity as? PokemonEntity ?: return
 
-        val attacker = entity.lastAttacker
-        val hasAttacker = (attacker != null && attacker.isAlive)
+        // If the Pokemon has an owner, return
+        if (pokemonEntity.pokemon.getOwnerUUID() != null) return
 
-        if(hasAttacker) {
-            entity.brain.setMemory(NEAREST_WILD_POKEMON_TARGET, attacker)
+        // If the Pokemon has an attacker, set the memory to the attacker
+        val attacker = pokemonEntity.lastAttacker
+        if (attacker?.isAlive == true) {
+            pokemonEntity.brain.setMemory(NEAREST_WILD_POKEMON_TARGET, attacker)
         }
 
         super.doTick(level, entity)
-    }
-
-    private fun isWildPokemon(entity: PokemonEntity): Boolean {
-        return entity.pokemon.getOwnerUUID() == null
     }
 }

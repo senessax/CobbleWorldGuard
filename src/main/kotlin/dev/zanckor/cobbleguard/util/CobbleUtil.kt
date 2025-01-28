@@ -2,8 +2,28 @@ package dev.zanckor.cobbleguard.util
 
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import net.minecraft.world.entity.LivingEntity
 
 object CobbleUtil {
+
+    /**
+     * Determines if a Pokemon must run away from another entity if attacked
+     * In case the attacker is a Pokemon, it will call mustRunAwayPokemon
+     * Otherwise, it will check if the Pokemon's health is lower than the attacker's health
+     *
+     * @param pokemonEntity The Pokemon that is being attacked
+     * @param attackerEntity The entity that is attacking
+     * @return If the Pokemon must run away
+     * @see mustRunAwayPokemon
+     * @see calculateCombatStats
+     */
+    fun mustRunAway(pokemonEntity: PokemonEntity, attackerEntity: LivingEntity): Boolean {
+        return if(attackerEntity is PokemonEntity) {
+            mustRunAwayPokemon(pokemonEntity, attackerEntity)
+        } else {
+            attackerEntity.health > pokemonEntity.pokemon.currentHealth
+        }
+    }
 
     /**
      * Determines if a Pokemon must run away from another Pokemon if attacked

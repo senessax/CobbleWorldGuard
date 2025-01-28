@@ -3,10 +3,8 @@ package dev.zanckor.cobbleguard.core.brain.task
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.mojang.datafixers.util.Pair
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_WILD_POKEMON_TARGET
-import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.util.CobbleUtil
 import dev.zanckor.cobbleguard.util.Timer
-import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.entity.ai.memory.MemoryStatus
 
@@ -17,28 +15,37 @@ class WildBehaviourTask : PokemonTask() {
 
     override fun start(pokemon: PokemonEntity?) {
         val canAttack = Timer.hasReached("${pokemon?.stringUUID}_attack_cooldown", true)
-        val target = pokemon?.brain?.getMemory(NEAREST_WILD_POKEMON_TARGET)?.get()
-        if(!canAttack || pokemon == null || target == null || target.isDeadOrDying) {
+        val attacker = pokemon?.brain?.getMemory(NEAREST_WILD_POKEMON_TARGET)?.get()
+        if (!canAttack || attacker == null || attacker.isDeadOrDying || pokemon.distanceToSqr(attacker) > 100) {
+            customStop(pokemon!!)
             return
         }
 
-        val isNearEnough = moveToPosition(pokemon, target.blockPosition(), 10.0)
+        pokemon.target = attacker
 
-        if(target is PokemonEntity) {
-            println(CobbleUtil.mustRunAwayPokemon(pokemon, target))
+        // Run away if the target is a Pokemon and the Pokemon is stronger
+        if (CobbleUtil.mustRunAway(pokemon, attacker)) {
+            runAway(pokemon)
+        } else {
+            // Otherwise, attack the target
+            if (moveToPosition(pokemon, attacker.blockPosition(), pokemon.boundingBox.size * 10)) {
+                attack(pokemon, attacker)
+            }
         }
 
-        if(isNearEnough) {
-            attack(pokemon, target)
-        }
-
-        pokemon.target = target
         super.start(pokemon)
     }
 
-    private fun attack(pokemon: PokemonEntity, target: LivingEntity) {
-        val hostilemon = pokemon as Hostilemon
-        hostilemon.useMove(hostilemon.getBestMoveAgainst(target), target)
-        Timer.start("${pokemon.stringUUID}_attack_cooldown", 0.6)
+    private fun runAway(pokemon: PokemonEntity) {
+        val target = pokemon.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).get()
+        val direction = pokemon.position().subtract(target.position()).normalize()
+        val runAwayPosition = pokemon.position().add(direction.x * 10, 0.0, direction.z * 10)
+
+        pokemon.navigation.moveTo(runAwayPosition.x, runAwayPosition.y, runAwayPosition.z, 1.6)
+    }
+
+    private fun customStop(pokemon: PokemonEntity) {
+        pokemon.navigation.stop()
+        pokemon.brain.clearMemories()
     }
 }

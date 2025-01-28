@@ -13,6 +13,7 @@ import dev.zanckor.cobbleguard.core.brain.sensor.NearestWildTargetSensor
 import dev.zanckor.cobbleguard.core.brain.task.DefendOwnerTask
 import dev.zanckor.cobbleguard.core.brain.task.WildBehaviourTask
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
+import dev.zanckor.cobbleguard.util.Timer
 import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
@@ -39,15 +40,6 @@ class PokemonMixin(
 
     @Shadow
     val pokemon: Pokemon? = null
-
-    override fun hurt(damageSource: DamageSource, damage: Float): Boolean {
-        if (pokemon != null) {
-            pokemon.currentHealth -= damage.toInt()
-            health = pokemon.currentHealth.toFloat()
-        }
-
-        return super.hurt(damageSource, damage)
-    }
 
     override fun getBestMoveAgainst(target: LivingEntity?): Move? {
         val isPokemon = target is PokemonEntity
@@ -92,11 +84,21 @@ class PokemonMixin(
             val power = if (move.power == 0.0) 20.0 else move.power
 
             val level = pokemon!!.level
-            val damage = (power * effectiveness) * (level / 100.0)
+            val damage = (power * effectiveness) * (level / 100.0) * 0.4
 
             target.hurt(damageSources().mobAttack(this), damage.toFloat())
             if (target is Mob) target.target = this
         }
+    }
+
+    override fun hurt(damageSource: DamageSource, damage: Float): Boolean {
+        val prevHealth = pokemon?.currentHealth?.toFloat() ?: 0F
+
+        if (pokemon != null) {
+            pokemon.currentHealth = (prevHealth - damage).toInt()
+        }
+
+        return super.hurt(damageSource, damage)
     }
 
     override fun getMoveEffectiveness(move: Move?, targetType: ElementalType): Double {
@@ -107,14 +109,21 @@ class PokemonMixin(
         return BrainActivityGroup.coreTasks(
             AllApplicableBehaviours(
                 DefendOwnerTask()
-                    .startCondition { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent }
-                    .stopIf { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).get().isDeadOrDying },
+                    .startCondition { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent && Timer.hasReached("${getUUID()}_task_cooldown", 1) },
 
                 WildBehaviourTask()
-                    .startCondition { entity -> entity!!.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).isPresent }
-                    .stopIf { entity -> entity!!.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).get().isDeadOrDying }
+                    .startCondition { entity -> entity!!.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).isPresent && Timer.hasReached("${getUUID()}_task_cooldown", 1) }
             )
         )
+    }
+
+    /**
+     * Knockback the entity. Modified to base the knockback on the pokemon's power.
+     */
+    override fun knockback(d: Double, e: Double, f: Double) {
+        val power = pokemon!!.attack.toFloat() / 75.0
+
+        super.knockback(d * power, e * power, f * power)
     }
 
     @Suppress("UNCHECKED_CAST")

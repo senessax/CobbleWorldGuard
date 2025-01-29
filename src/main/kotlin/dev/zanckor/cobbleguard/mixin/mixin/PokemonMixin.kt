@@ -1,11 +1,20 @@
 package dev.zanckor.cobbleguard.mixin.mixin
 
+import com.cobblemon.mod.common.api.battles.model.actor.BattleActor
+import com.cobblemon.mod.common.api.battles.model.ai.BattleAI
 import com.cobblemon.mod.common.api.moves.Move
 import com.cobblemon.mod.common.api.moves.MoveSet
+import com.cobblemon.mod.common.api.pokemon.experience.SidemodExperienceSource
+import com.cobblemon.mod.common.api.pokemon.experience.StandardExperienceCalculator
 import com.cobblemon.mod.common.api.types.ElementalType
+import com.cobblemon.mod.common.battles.actor.PokemonBattleActor
+import com.cobblemon.mod.common.battles.ai.RandomBattleAI
 import com.cobblemon.mod.common.battles.ai.typeEffectiveness
+import com.cobblemon.mod.common.battles.pokemon.BattlePokemon
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.pokemon.Pokemon
+import dev.zanckor.cobbleguard.CobbleGuard
+import dev.zanckor.cobbleguard.CobbleGuard.Companion.MODID
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_WILD_POKEMON_TARGET
 import dev.zanckor.cobbleguard.core.brain.sensor.NearestOwnerTargetSensor
@@ -28,6 +37,7 @@ import net.tslat.smartbrainlib.api.core.behaviour.AllApplicableBehaviours
 import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
 import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.Shadow
+import java.util.*
 
 @Mixin(PokemonEntity::class)
 class PokemonMixin(
@@ -40,6 +50,8 @@ class PokemonMixin(
 
     @Shadow
     val pokemon: Pokemon? = null
+
+    var hostilemonAttacker: PokemonEntity? = null
 
     override fun getBestMoveAgainst(target: LivingEntity?): Move? {
         val isPokemon = target is PokemonEntity
@@ -96,9 +108,34 @@ class PokemonMixin(
 
         if (pokemon != null) {
             pokemon.currentHealth = (prevHealth - damage).toInt()
+            pokemon.entity!!.health = pokemon.currentHealth.toFloat()
+
+            if (damageSource.entity is PokemonEntity) {
+                hostilemonAttacker = damageSource.entity as PokemonEntity
+            }
         }
 
-        return super.hurt(damageSource, damage)
+        return super.hurt(damageSource, 0F)
+    }
+
+    override fun remove(removalReason: RemovalReason) {
+        if (removalReason == RemovalReason.KILLED && hostilemonAttacker != null) {
+            givePokemonExperience(hostilemonAttacker!!.pokemon)
+        }
+
+        super.remove(removalReason)
+    }
+
+    private fun givePokemonExperience(attacker: Pokemon) {
+        val attackerBattle = BattlePokemon.safeCopyOf(attacker)
+        attackerBattle.actor = PokemonBattleActor(UUID.randomUUID(), attackerBattle, 10F, RandomBattleAI())
+
+        val pokemonBattle = BattlePokemon.safeCopyOf(this.pokemon!!)
+        pokemonBattle.actor = PokemonBattleActor(UUID.randomUUID(), pokemonBattle, 10F, RandomBattleAI())
+
+        val experienceResult = StandardExperienceCalculator.calculate(attackerBattle, pokemonBattle, 1.0)
+
+        hostilemonAttacker!!.pokemon.addExperience(SidemodExperienceSource(MODID), experienceResult)
     }
 
     override fun getMoveEffectiveness(move: Move?, targetType: ElementalType): Double {
@@ -109,10 +146,20 @@ class PokemonMixin(
         return BrainActivityGroup.coreTasks(
             AllApplicableBehaviours(
                 DefendOwnerTask()
-                    .startCondition { entity -> entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent && Timer.hasReached("${getUUID()}_task_cooldown", 1) },
+                    .startCondition { entity ->
+                        entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent && Timer.hasReached(
+                            "${getUUID()}_task_cooldown",
+                            1
+                        )
+                    },
 
                 WildBehaviourTask()
-                    .startCondition { entity -> entity!!.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).isPresent && Timer.hasReached("${getUUID()}_task_cooldown", 1) }
+                    .startCondition { entity ->
+                        entity!!.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).isPresent && Timer.hasReached(
+                            "${getUUID()}_task_cooldown",
+                            1
+                        )
+                    }
             )
         )
     }

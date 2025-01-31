@@ -24,7 +24,8 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
 
         // If the entity is more than X blocks away from the position, and the entity is not already moving to the position, move to it
         if (distanceToMove > distance && (navigationPosition == null || navigationPosition.distSqr(movePosition) > 5.0)) {
-            val speed = entity.pokemon.getStat(Stats.SPEED).toDouble() / 50.0
+            val speed = entity.pokemon.getStat(Stats.SPEED).toDouble() / 50.0.coerceAtLeast(2.0)
+            println(speed)
 
             entity.getNavigation().moveTo(movePosition.x.toDouble(), movePosition.y.toDouble(), movePosition.z.toDouble(), speed)
         }
@@ -41,7 +42,7 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
      */
     protected fun attack(pokemon: PokemonEntity, target: LivingEntity) {
         val hostilemon = pokemon as Hostilemon
-        hostilemon.useMove(hostilemon.getBestMoveAgainst(target), target)
+        hostilemon.usePhysicalMove(hostilemon.getBestMoveAgainst(target), target)
         Timer.start("${pokemon.stringUUID}_attack_cooldown", 0.2)
     }
 }

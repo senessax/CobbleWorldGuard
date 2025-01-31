@@ -19,12 +19,11 @@ import dev.zanckor.cobbleguard.core.brain.sensor.NearestWildTargetSensor
 import dev.zanckor.cobbleguard.core.brain.task.DefendOwnerTask
 import dev.zanckor.cobbleguard.core.brain.task.WildBehaviourTask
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
-import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.AGGRESSIVITY
+import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity
 import dev.zanckor.cobbleguard.util.Timer
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
-import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
@@ -46,7 +45,7 @@ import java.util.*
 class PokemonMixin(
     entityType: EntityType<out PathfinderMob>, level: Level,
     override var isHostile: Boolean,
-    override var aggressivity: AGGRESSIVITY
+    override var aggressivity: Aggresivity
 ) :
     PathfinderMob(entityType, level),
     Hostilemon,
@@ -57,6 +56,16 @@ class PokemonMixin(
 
     private var hostilemonAttacker: PokemonEntity? = null
 
+    /**
+     * Selects the most effective move against a target based on type effectiveness and move power
+     *
+     * Strategy:
+     * 1. For Pokémon targets: Analyze move effectiveness and power
+     * 2. For non-Pokémon targets: Choose a random move
+     *
+     * @param target The entity being targeted
+     * @return The most suitable move from the Pokémon's moveset
+     */
     override fun getBestMoveAgainst(target: LivingEntity?): Move? {
         val isPokemon = target is PokemonEntity
 
@@ -71,6 +80,104 @@ class PokemonMixin(
         }
     }
 
+    /**
+     * Handles the execution of a physical move against a target entity.
+     *
+     * This method calculates damage based on move power, type effectiveness,
+     * and the Pokémon's level, then applies damage to the target.
+     *
+     * @param move The Move being used
+     * @param target The target entity receiving the attack
+     */
+    override fun usePhysicalMove(move: Move?, target: LivingEntity?) {
+        if (move != null && target != null) {
+            val effectiveness = calculateMoveEffectiveness(move, target)
+            val basePower = if (move.power == 0.0) 20.0 else move.power
+            val damage = calculateDamage(basePower, effectiveness)
+
+            applyDamageToTarget(target, damage)
+            updateTargetBehavior(target)
+        }
+    }
+
+    /**
+     * Handles the execution of a ranged move against a target entity.
+     * This method calculates damage based on move power, type effectiveness,
+     * and the Pokémon's level, then applies damage to the target.
+     * @param move The Move being used
+     * @param target The target entity receiving the attack
+     * @see usePhysicalMove
+     */
+    override fun useRangedMove(move: Move?, target: LivingEntity?) {
+        if(move != null && target != null) {
+
+        }
+    }
+
+    /**
+     * Determines move effectiveness based on target's type.
+     *
+     * @param move The attacking move
+     * @param target The target entity
+     * @return Effectiveness multiplier (default 1.0 if not a Pokémon)
+     */
+    private fun calculateMoveEffectiveness(move: Move, target: LivingEntity): Double {
+        return if (target is PokemonEntity) {
+            getMoveEffectiveness(move, target.pokemon.primaryType)
+        } else {
+            1.0 // Standard effectiveness for non-Pokémon entities
+        }
+    }
+
+    /**
+     * Calculates damage using a simplified damage formula.
+     *
+     * @param basePower Base power of the move
+     * @param effectiveness Type effectiveness multiplier
+     * @return Calculated damage amount
+     */
+    private fun calculateDamage(basePower: Double, effectiveness: Double): Double {
+        val pokemonLevel = pokemon?.level ?: 1
+        return (basePower * effectiveness) * (pokemonLevel / 100.0) * 0.4
+    }
+
+    /**
+     * Applies damage to the target entity.
+     *
+     * @param target The entity receiving damage
+     * @param damage Amount of damage to be applied
+     */
+    private fun applyDamageToTarget(target: LivingEntity, damage: Double) {
+        target.hurt(damageSources().mobAttack(this), damage.toFloat())
+    }
+
+    /**
+     * Updates target's behavior after being attacked.
+     *
+     * @param target The entity that was attacked
+     */
+    private fun updateTargetBehavior(target: LivingEntity) {
+        if (target is Mob) {
+            target.target = this
+        }
+    }
+
+    override fun getMoveEffectiveness(move: Move?, targetType: ElementalType): Double {
+        return typeEffectiveness[move!!.type]?.get(targetType) ?: 0.0
+    }
+
+    /**
+     * Maps moves to their effectiveness against a target Pokémon
+     *
+     * Calculates a composite score for each move considering:
+     * - Type effectiveness against primary type
+     * - Type effectiveness against secondary type (if exists)
+     * - Base move power
+     *
+     * @param moveSet The collection of moves available to the current Pokémon
+     * @param pokemonTarget The target Pokémon to evaluate moves against
+     * @return A list of moves with their effectiveness scores
+     */
     private fun mapMoves(moveSet: MoveSet, pokemonTarget: Pokemon): List<Triple<Move, Double, Double>> {
         val mappedMoves = mutableListOf<Triple<Move, Double, Double>>()
 
@@ -86,6 +193,17 @@ class PokemonMixin(
         return mappedMoves
     }
 
+    /**
+     * Compares two moves based on their combined effectiveness and power
+     *
+     * Scoring method:
+     * - Multiply type effectiveness by move power
+     * - Select move with highest composite score
+     *
+     * @param move1 First move to compare
+     * @param move2 Second move to compare
+     * @return Comparison result indicating relative move strength
+     */
     private fun compareMoves(move1: Triple<Move, Double, Double>, move2: Triple<Move, Double, Double>): Int {
         val move1Value = move1.second * move1.third
         val move2Value = move2.second * move2.third
@@ -93,43 +211,15 @@ class PokemonMixin(
         return move1Value.compareTo(move2Value)
     }
 
-    override fun useMove(move: Move?, target: LivingEntity?) {
-        if (move != null && target != null) {
-            val effectiveness =
-                if (target is PokemonEntity) getMoveEffectiveness(move, target.pokemon.primaryType) else 1.0
-            val power = if (move.power == 0.0) 20.0 else move.power
-
-            val level = pokemon!!.level
-            val damage = (power * effectiveness) * (level / 100.0) * 0.4
-
-            target.hurt(damageSources().mobAttack(this), damage.toFloat())
-            if (target is Mob) target.target = this
-        }
-    }
-
-    override fun hurt(damageSource: DamageSource, damage: Float): Boolean {
-        val prevHealth = pokemon?.currentHealth?.toFloat() ?: 0F
-
-        if (pokemon != null) {
-            pokemon.currentHealth = (prevHealth - damage).toInt()
-            pokemon.entity!!.health = pokemon.currentHealth.toFloat()
-
-            if (damageSource.entity is PokemonEntity) {
-                hostilemonAttacker = damageSource.entity as PokemonEntity
-            }
-        }
-
-        return super.hurt(damageSource, 0F)
-    }
-
-    override fun remove(removalReason: RemovalReason) {
-        if (removalReason == RemovalReason.KILLED && hostilemonAttacker != null) {
-            givePokemonExperience(hostilemonAttacker!!.pokemon)
-        }
-
-        super.remove(removalReason)
-    }
-
+    /**
+     * Experience reward mechanism when this Pokémon is defeated
+     *
+     * Calculates and awards experience to the attacking Pokémon using:
+     * - Standard Experience Calculator
+     * - Battle simulation with random AI
+     *
+     * @param attacker The Pokémon that defeated this entity
+     */
     private fun givePokemonExperience(attacker: Pokemon) {
         val attackerBattle = BattlePokemon.safeCopyOf(attacker)
         attackerBattle.actor = PokemonBattleActor(UUID.randomUUID(), attackerBattle, 10F, RandomBattleAI())
@@ -142,10 +232,55 @@ class PokemonMixin(
         hostilemonAttacker!!.pokemon.addExperience(SidemodExperienceSource(MODID), experienceResult)
     }
 
-    override fun getMoveEffectiveness(move: Move?, targetType: ElementalType): Double {
-        return typeEffectiveness[move!!.type]?.get(targetType) ?: 0.0
+    /**
+     * Interaction handler for player interactions
+     *
+     * Toggles Pokémon aggression mode when right-clicked without sneaking
+     * Provides feedback to the player about current aggression state
+     *
+     * @param player The player interacting with the Pokémon
+     * @param vec3 Interaction position
+     * @param interactionHand The hand used for interaction
+     * @return Result of the interaction
+     */
+    override fun interactAt(player: Player, vec3: Vec3, interactionHand: InteractionHand): InteractionResult {
+        @Suppress("SENSELESS_COMPARISON")
+        if (aggressivity == null) Aggresivity.DEFENSIVE
+
+        if (!player.isShiftKeyDown && interactionHand == InteractionHand.MAIN_HAND) {
+            aggressivity = aggressivity.next()
+            player.sendSystemMessage(Component.literal(aggressivity.message))
+        }
+
+        return super.interactAt(player, vec3, interactionHand)
     }
 
+    /**
+     * Handles Pokémon removal from the world.
+     * Awards experience to the attacking Pokémon if killed by a hostilemon.
+     */
+    override fun remove(removalReason: RemovalReason) {
+        if (removalReason == RemovalReason.KILLED && hostilemonAttacker != null) {
+            givePokemonExperience(hostilemonAttacker!!.pokemon)
+        }
+
+        super.remove(removalReason)
+    }
+
+    /**
+     * Applies knockback to the entity with a power based on Pokémon attack stat
+     */
+    override fun knockback(d: Double, e: Double, f: Double) {
+        val power = pokemon!!.attack.toFloat() / 75.0
+
+        super.knockback(d * power, e * power, f * power)
+    }
+
+    /**
+     * Returns the core tasks for the Pokémon's brain
+     * @return BrainActivityGroup containing core tasks
+     * @see BrainActivityGroup
+     */
     override fun getCoreTasks(): BrainActivityGroup<out PokemonMixin> {
         return BrainActivityGroup.coreTasks(
             AllApplicableBehaviours(
@@ -169,14 +304,9 @@ class PokemonMixin(
     }
 
     /**
-     * Knockback the entity. Modified to base the knockback on the pokemon's power.
+     * Returns the sensors for the Pokémon's brain
+     * @return List of sensors
      */
-    override fun knockback(d: Double, e: Double, f: Double) {
-        val power = pokemon!!.attack.toFloat() / 75.0
-
-        super.knockback(d * power, e * power, f * power)
-    }
-
     @Suppress("UNCHECKED_CAST")
     override fun getSensors(): MutableList<out ExtendedSensor<out PokemonMixin>> {
         val sensors = mutableListOf<ExtendedSensor<out PokemonMixin>>()
@@ -194,17 +324,5 @@ class PokemonMixin(
 
     override fun customServerAiStep() {
         tickBrain(this)
-    }
-
-    override fun interactAt(player: Player, vec3: Vec3, interactionHand: InteractionHand): InteractionResult {
-        if(aggressivity == null) AGGRESSIVITY.DEFENSIVE
-
-        if(!player.isShiftKeyDown && interactionHand == InteractionHand.MAIN_HAND) {
-            aggressivity = aggressivity.next()
-
-            player.sendSystemMessage(Component.literal(aggressivity.message))
-        }
-
-        return super.interactAt(player, vec3, interactionHand)
     }
 }

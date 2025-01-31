@@ -4,7 +4,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonSensors
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
-import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.AGGRESSIVITY.*
+import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity.*
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.TamableAnimal

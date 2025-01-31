@@ -18,7 +18,7 @@ abstract class PokemonFollowOwnerGoalMixin {
     private fun canContinueToUse(cir: CallbackInfoReturnable<Boolean>) {
         if (entity != null) {
             val hasTarget = entity.target != null && entity.target!!.isAlive
-            val isStaying = (entity as Hostilemon).aggressivity == Hostilemon.AGGRESSIVITY.STAY
+            val isStaying = (entity as Hostilemon).aggressivity == Hostilemon.Aggresivity.STAY
 
             if(hasTarget) cir.returnValue = false
             if(isStaying) cir.returnValue = false
@@ -29,7 +29,7 @@ abstract class PokemonFollowOwnerGoalMixin {
     private fun canUse(cir: CallbackInfoReturnable<Boolean>) {
         if (entity != null) {
             val hasTarget = entity.target != null && entity.target!!.isAlive
-            val isStaying = (entity as Hostilemon).aggressivity == Hostilemon.AGGRESSIVITY.STAY
+            val isStaying = (entity as Hostilemon).aggressivity == Hostilemon.Aggresivity.STAY
 
             if(hasTarget) cir.returnValue = false
             if(isStaying) cir.returnValue = false

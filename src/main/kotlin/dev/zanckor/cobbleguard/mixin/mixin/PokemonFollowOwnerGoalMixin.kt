@@ -2,6 +2,7 @@ package dev.zanckor.cobbleguard.mixin.mixin
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.entity.pokemon.ai.goals.PokemonFollowOwnerGoal
+import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.Shadow
 import org.spongepowered.asm.mixin.injection.At
@@ -13,17 +14,25 @@ abstract class PokemonFollowOwnerGoalMixin {
     @Shadow
     private val entity: PokemonEntity? = null
 
-    @Inject(method = ["canContinueToUse"], at = [At("HEAD")], cancellable = true)
+    @Inject(method = ["canContinueToUse"], at = [At("RETURN")], cancellable = true)
     private fun canContinueToUse(cir: CallbackInfoReturnable<Boolean>) {
-        if(entity == null) cir.returnValue = false
+        if (entity != null) {
+            val hasTarget = entity.target != null && entity.target!!.isAlive
+            val isStaying = (entity as Hostilemon).aggressivity == Hostilemon.AGGRESSIVITY.STAY
 
-        cir.returnValue = entity!!.target != null
+            if(hasTarget) cir.returnValue = false
+            if(isStaying) cir.returnValue = false
+        }
     }
 
-    @Inject(method = ["canUse"], at = [At("HEAD")], cancellable = true)
+    @Inject(method = ["canUse"], at = [At("RETURN")], cancellable = true)
     private fun canUse(cir: CallbackInfoReturnable<Boolean>) {
-        if(entity == null) cir.returnValue = false
+        if (entity != null) {
+            val hasTarget = entity.target != null && entity.target!!.isAlive
+            val isStaying = (entity as Hostilemon).aggressivity == Hostilemon.AGGRESSIVITY.STAY
 
-        cir.returnValue = entity!!.target != null
+            if(hasTarget) cir.returnValue = false
+            if(isStaying) cir.returnValue = false
+        }
     }
 }

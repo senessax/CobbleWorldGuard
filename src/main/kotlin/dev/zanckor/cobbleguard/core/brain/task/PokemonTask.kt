@@ -42,6 +42,6 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
     protected fun attack(pokemon: PokemonEntity, target: LivingEntity) {
         val hostilemon = pokemon as Hostilemon
         hostilemon.useMove(hostilemon.getBestMoveAgainst(target), target)
-        Timer.start("${pokemon.stringUUID}_attack_cooldown", 0.6)
+        Timer.start("${pokemon.stringUUID}_attack_cooldown", 0.2)
     }
 }

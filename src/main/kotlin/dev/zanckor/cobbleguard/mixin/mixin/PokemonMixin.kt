@@ -1,7 +1,5 @@
 package dev.zanckor.cobbleguard.mixin.mixin
 
-import com.cobblemon.mod.common.api.battles.model.actor.BattleActor
-import com.cobblemon.mod.common.api.battles.model.ai.BattleAI
 import com.cobblemon.mod.common.api.moves.Move
 import com.cobblemon.mod.common.api.moves.MoveSet
 import com.cobblemon.mod.common.api.pokemon.experience.SidemodExperienceSource
@@ -13,7 +11,6 @@ import com.cobblemon.mod.common.battles.ai.typeEffectiveness
 import com.cobblemon.mod.common.battles.pokemon.BattlePokemon
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.pokemon.Pokemon
-import dev.zanckor.cobbleguard.CobbleGuard
 import dev.zanckor.cobbleguard.CobbleGuard.Companion.MODID
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_WILD_POKEMON_TARGET
@@ -22,14 +19,20 @@ import dev.zanckor.cobbleguard.core.brain.sensor.NearestWildTargetSensor
 import dev.zanckor.cobbleguard.core.brain.task.DefendOwnerTask
 import dev.zanckor.cobbleguard.core.brain.task.WildBehaviourTask
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
+import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.AGGRESSIVITY
 import dev.zanckor.cobbleguard.util.Timer
+import net.minecraft.network.chat.Component
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.entity.ai.Brain
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
+import net.minecraft.world.phys.Vec3
 import net.tslat.smartbrainlib.api.SmartBrainOwner
 import net.tslat.smartbrainlib.api.core.BrainActivityGroup
 import net.tslat.smartbrainlib.api.core.SmartBrainProvider
@@ -42,7 +45,8 @@ import java.util.*
 @Mixin(PokemonEntity::class)
 class PokemonMixin(
     entityType: EntityType<out PathfinderMob>, level: Level,
-    override var isHostile: Boolean
+    override var isHostile: Boolean,
+    override var aggressivity: AGGRESSIVITY
 ) :
     PathfinderMob(entityType, level),
     Hostilemon,
@@ -51,7 +55,7 @@ class PokemonMixin(
     @Shadow
     val pokemon: Pokemon? = null
 
-    var hostilemonAttacker: PokemonEntity? = null
+    private var hostilemonAttacker: PokemonEntity? = null
 
     override fun getBestMoveAgainst(target: LivingEntity?): Move? {
         val isPokemon = target is PokemonEntity
@@ -190,5 +194,17 @@ class PokemonMixin(
 
     override fun customServerAiStep() {
         tickBrain(this)
+    }
+
+    override fun interactAt(player: Player, vec3: Vec3, interactionHand: InteractionHand): InteractionResult {
+        if(aggressivity == null) AGGRESSIVITY.DEFENSIVE
+
+        if(!player.isShiftKeyDown && interactionHand == InteractionHand.MAIN_HAND) {
+            aggressivity = aggressivity.next()
+
+            player.sendSystemMessage(Component.literal(aggressivity.message))
+        }
+
+        return super.interactAt(player, vec3, interactionHand)
     }
 }

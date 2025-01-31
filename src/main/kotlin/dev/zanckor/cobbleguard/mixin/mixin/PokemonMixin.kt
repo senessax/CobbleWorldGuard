@@ -4,7 +4,9 @@ import com.cobblemon.mod.common.api.moves.Move
 import com.cobblemon.mod.common.api.moves.MoveSet
 import com.cobblemon.mod.common.api.pokemon.experience.SidemodExperienceSource
 import com.cobblemon.mod.common.api.pokemon.experience.StandardExperienceCalculator
+import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.api.types.ElementalType
+import com.cobblemon.mod.common.api.types.ElementalTypes
 import com.cobblemon.mod.common.battles.actor.PokemonBattleActor
 import com.cobblemon.mod.common.battles.ai.RandomBattleAI
 import com.cobblemon.mod.common.battles.ai.typeEffectiveness
@@ -18,18 +20,23 @@ import dev.zanckor.cobbleguard.core.brain.sensor.NearestOwnerTargetSensor
 import dev.zanckor.cobbleguard.core.brain.sensor.NearestWildTargetSensor
 import dev.zanckor.cobbleguard.core.brain.task.DefendOwnerTask
 import dev.zanckor.cobbleguard.core.brain.task.WildBehaviourTask
+import dev.zanckor.cobbleguard.core.rangedattacks.MoveRegistry
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity
+import dev.zanckor.cobbleguard.mixin.mixininterface.RangedMove
 import dev.zanckor.cobbleguard.util.Timer
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
+import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
 import net.minecraft.world.entity.PathfinderMob
 import net.minecraft.world.entity.ai.Brain
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.entity.projectile.Projectile
+import net.minecraft.world.entity.projectile.SmallFireball
 import net.minecraft.world.level.Level
 import net.minecraft.world.phys.Vec3
 import net.tslat.smartbrainlib.api.SmartBrainOwner
@@ -91,12 +98,10 @@ class PokemonMixin(
      */
     override fun usePhysicalMove(move: Move?, target: LivingEntity?) {
         if (move != null && target != null) {
-            val effectiveness = calculateMoveEffectiveness(move, target)
-            val basePower = if (move.power == 0.0) 20.0 else move.power
-            val damage = calculateDamage(basePower, effectiveness)
-
-            applyDamageToTarget(target, damage)
+            applyDamageToTarget(target, calculateMoveDamage(move, target))
             updateTargetBehavior(target)
+
+            useRangedMove(move, target)
         }
     }
 
@@ -110,8 +115,47 @@ class PokemonMixin(
      */
     override fun useRangedMove(move: Move?, target: LivingEntity?) {
         if(move != null && target != null) {
+            val projectile: Projectile?
+            val moveType = move.type
 
+            when(move.type) { // Determine the projectile type based on the move's type
+                ElementalTypes.FIRE -> projectile = SmallFireball(level(), this, Vec3.ZERO)
+                else -> return
+            }
+
+            if(projectile is RangedMove) {
+                projectile.setPos(position().x, position().y + eyeHeight, position().z)
+                projectile.setMove(MoveRegistry().getMove(ElementalTypes.FIRE)!!)
+                projectile.setMoveDamage(calculateMoveDamage(move, target))
+
+                shootProjectile(projectile, projectile.getMove()!!.speed, target)
+            }
         }
+    }
+
+    /**
+     * Spawns and shoots a projectile towards the target entity.
+     * @param projectile The projectile entity to be spawned
+     * @param target The target entity to shoot at
+     * @see useRangedMove
+     */
+    private fun shootProjectile(projectile : Projectile, speed : Float, target: LivingEntity?) {
+        val direction = target!!.position().subtract(0.0, (target.bbHeight / 2).toDouble(), 0.0).subtract(position()).normalize()
+
+        projectile.shoot(
+            direction.x, direction.y, direction.z,
+            0.5f * speed,
+            1.0F)
+
+        level().addFreshEntity(projectile)
+    }
+
+
+    private fun calculateMoveDamage(move: Move, target: LivingEntity): Double {
+        val effectiveness = calculateMoveEffectiveness(move, target)
+        val basePower = if (move.power == 0.0) 20.0 else move.power
+
+        return calculateDamage(basePower, effectiveness)
     }
 
     /**
@@ -149,6 +193,17 @@ class PokemonMixin(
      */
     private fun applyDamageToTarget(target: LivingEntity, damage: Double) {
         target.hurt(damageSources().mobAttack(this), damage.toFloat())
+    }
+
+    /**
+     * Handles the entity being attacked by another entity.
+     * Reduces damage taken by a factor based on Pokémon defense stat.
+     */
+    override fun hurt(damageSource: DamageSource, f: Float): Boolean {
+        val damage = f.toDouble()
+        val defense = pokemon!!.getStat(Stats.DEFENCE).toFloat() / 75.0
+
+        return super.hurt(damageSource, (damage * defense).toFloat())
     }
 
     /**

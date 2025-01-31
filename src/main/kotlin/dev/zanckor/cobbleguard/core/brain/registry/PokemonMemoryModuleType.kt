@@ -13,6 +13,7 @@ object PokemonMemoryModuleType {
     val NEAREST_WILD_POKEMON_TARGET: MemoryModuleType<LivingEntity> = register("nearest_wild_pokemon_target")
 
     private fun <U> register(key: String): MemoryModuleType<U> {
+        @Suppress("UNCHECKED_CAST")
         return Registry.register(BuiltInRegistries.MEMORY_MODULE_TYPE,
             ResourceLocation.fromNamespaceAndPath(MODID, key),
             MemoryModuleType<Any?>(Optional.empty())

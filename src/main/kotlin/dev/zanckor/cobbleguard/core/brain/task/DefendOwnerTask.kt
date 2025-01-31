@@ -15,17 +15,15 @@ class DefendOwnerTask : PokemonTask() {
     override fun start(pokemon: PokemonEntity?) {
         val canAttack = Timer.hasReached("${pokemon?.stringUUID}_attack_cooldown", true)
         val target = pokemon?.brain?.getMemory(NEAREST_OWNER_TARGET)?.get()
-        if(!canAttack || target == null || target.isDeadOrDying || pokemon.distanceToSqr(target) > 200) {
+        if (!canAttack || target == null || target.isDeadOrDying || pokemon.distanceToSqr(target) > 200) {
             customStop(pokemon!!)
             return
         }
 
-
         pokemon.target = target
 
-        if(moveToPosition(pokemon, target.blockPosition(), pokemon.boundingBox.size * 10)) {
-            attack(pokemon, target)
-        }
+        moveToPosition(pokemon, target.blockPosition(), pokemon.boundingBox.size * 10)
+        attack(pokemon, target)
 
         super.start(pokemon)
     }

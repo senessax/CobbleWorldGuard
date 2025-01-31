@@ -28,9 +28,8 @@ class WildBehaviourTask : PokemonTask() {
             runAway(pokemon)
         } else {
             // Otherwise, attack the target
-            if (moveToPosition(pokemon, attacker.blockPosition(), pokemon.boundingBox.size * 10)) {
-                attack(pokemon, attacker)
-            }
+            moveToPosition(pokemon, attacker.blockPosition(), pokemon.boundingBox.size * 10)
+            attack(pokemon, attacker)
         }
 
         super.start(pokemon)

@@ -38,7 +38,6 @@ class GravityMove(
         val duration = 5
 
         val timeElapsed = System.currentTimeMillis() / 1000.0
-        val timeFactor = (timeElapsed % duration) / duration
 
         for (i in 0 until numParticles) {
             val angle = (i.toDouble() / numParticles) * 2 * Math.PI

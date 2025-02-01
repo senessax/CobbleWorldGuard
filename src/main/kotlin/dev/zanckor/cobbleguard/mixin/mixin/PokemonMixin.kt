@@ -39,7 +39,6 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.entity.projectile.Projectile
 import net.minecraft.world.entity.projectile.SmallFireball
 import net.minecraft.world.entity.projectile.WitherSkull
-import net.minecraft.world.entity.projectile.windcharge.BreezeWindCharge
 import net.minecraft.world.entity.projectile.windcharge.WindCharge
 import net.minecraft.world.level.Level
 import net.minecraft.world.phys.Vec3
@@ -50,6 +49,9 @@ import net.tslat.smartbrainlib.api.core.behaviour.AllApplicableBehaviours
 import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
 import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.Shadow
+import org.spongepowered.asm.mixin.injection.At
+import org.spongepowered.asm.mixin.injection.Inject
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 import java.util.*
 
 @Mixin(PokemonEntity::class)
@@ -116,16 +118,16 @@ class PokemonMixin(
      * @see usePhysicalMove
      */
     override fun useRangedMove(move: Move?, target: LivingEntity?) {
-        if(move != null && target != null) {
+        if (move != null && target != null) {
             val projectile: Projectile?
             val moveType = move.type
 
-            projectile = when(moveType) { // Determine the projectile type based on the move's type
+            projectile = when (moveType) { // Determine the projectile type based on the move's type
                 ElementalTypes.FIRE -> SmallFireball(level(), this, Vec3.ZERO)
                 ElementalTypes.ICE -> WindCharge(level(), x, y, z, Vec3.ZERO)
                 ElementalTypes.POISON -> WitherSkull(level(), this, Vec3.ZERO)
                 ElementalTypes.PSYCHIC -> {
-                    if(random.nextIntBetweenInclusive(0, 10) <= 1) {
+                    if (random.nextIntBetweenInclusive(0, 10) <= 1) {
                         TeleporationMove().applyEffect(pokemon!!.entity!!, target)
                         return
                     } else {
@@ -136,7 +138,7 @@ class PokemonMixin(
                 else -> return
             }
 
-            if(projectile is RangedMove) {
+            if (projectile is RangedMove) {
                 projectile.setPos(position().x, position().y + eyeHeight - 0.1, position().z)
                 projectile.setMove(MoveRegistry().getMove(moveType)!!)
                 projectile.setMoveDamage(calculateMoveDamage(move, target))
@@ -152,13 +154,14 @@ class PokemonMixin(
      * @param target The target entity to shoot at
      * @see useRangedMove
      */
-    private fun shootProjectile(projectile : Projectile, speed : Float, target: LivingEntity?) {
+    private fun shootProjectile(projectile: Projectile, speed: Float, target: LivingEntity?) {
         val direction = target!!.position().subtract(position()).normalize()
 
         projectile.shoot(
             direction.x, direction.y, direction.z,
             0.5f * speed,
-            1.0F)
+            1.0F
+        )
 
         level().addFreshEntity(projectile)
     }
@@ -351,17 +354,13 @@ class PokemonMixin(
                 DefendOwnerTask()
                     .startCondition { entity ->
                         entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent && Timer.hasReached(
-                            "${getUUID()}_task_cooldown",
-                            1
-                        )
+                            "${getUUID()}_task_cooldown",1.0)
                     },
 
                 WildBehaviourTask()
                     .startCondition { entity ->
                         entity!!.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).isPresent && Timer.hasReached(
-                            "${getUUID()}_task_cooldown",
-                            1
-                        )
+                            "${getUUID()}_task_cooldown", 1.0)
                     }
             )
         )
@@ -388,5 +387,12 @@ class PokemonMixin(
 
     override fun customServerAiStep() {
         tickBrain(this)
+    }
+
+    @Inject(method = ["tick"], at = [At("HEAD")])
+    fun onTick(callbackInfo: CallbackInfo) {
+        if (target != null) {
+            lookAt(target!!, 30.0f, 30.0f)
+        }
     }
 }

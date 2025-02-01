@@ -56,16 +56,16 @@ object Timer {
      * @param timeInSeconds The time in seconds to reach.
      * @return True if the timer has reached the timeInSeconds.
      */
-    fun hasReached(name: String, timeInSeconds: Int): Boolean {
+    fun hasReached(name: String, timeInSeconds: Double): Boolean {
         if (TIMERS.containsKey(name)) {
             val timer = TIMERS[name]!!
 
             if (System.currentTimeMillis() >= timer) {
-                start(name, timeInSeconds.toDouble())
+                start(name, timeInSeconds)
                 return true
             }
         } else {
-            start(name, timeInSeconds.toDouble())
+            start(name, timeInSeconds)
             return true
         }
 

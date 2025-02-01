@@ -30,6 +30,8 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
         getTarget(entity)?.let {
             if(entity.distanceToSqr(it) > 100.0) return
             pokemonEntity.brain.setMemory(NEAREST_OWNER_TARGET, it)
+
+            entity.lookAt(it, 30.0f, 30.0f)
         }
 
         super.doTick(level, entity)

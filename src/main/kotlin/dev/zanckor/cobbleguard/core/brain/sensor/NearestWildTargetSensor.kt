@@ -25,6 +25,7 @@ class NearestWildTargetSensor : ExtendedSensor<LivingEntity>() {
         val attacker = pokemonEntity.lastAttacker
         if (attacker?.isAlive == true) {
             pokemonEntity.brain.setMemory(NEAREST_WILD_POKEMON_TARGET, attacker)
+            entity.lookAt(attacker, 30.0f, 30.0f)
         }
 
         super.doTick(level, entity)

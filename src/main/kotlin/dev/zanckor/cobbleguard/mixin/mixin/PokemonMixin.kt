@@ -36,6 +36,7 @@ import net.minecraft.world.entity.ai.Brain
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.entity.projectile.Projectile
 import net.minecraft.world.entity.projectile.SmallFireball
+import net.minecraft.world.entity.projectile.WitherSkull
 import net.minecraft.world.entity.projectile.windcharge.BreezeWindCharge
 import net.minecraft.world.entity.projectile.windcharge.WindCharge
 import net.minecraft.world.level.Level
@@ -120,11 +121,12 @@ class PokemonMixin(
             projectile = when(moveType) { // Determine the projectile type based on the move's type
                 ElementalTypes.FIRE -> SmallFireball(level(), this, Vec3.ZERO)
                 ElementalTypes.ICE -> WindCharge(level(), x, y, z, Vec3.ZERO)
+                ElementalTypes.POISON -> WitherSkull(level(), this, Vec3.ZERO)
                 else -> return
             }
 
             if(projectile is RangedMove) {
-                projectile.setPos(position().x, position().y + eyeHeight, position().z)
+                projectile.setPos(position().x, position().y + eyeHeight - 0.1, position().z)
                 projectile.setMove(MoveRegistry().getMove(moveType)!!)
                 projectile.setMoveDamage(calculateMoveDamage(move, target))
 

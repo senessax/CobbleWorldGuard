@@ -18,6 +18,7 @@ class FireMove(
 
     override fun applyEffect(target: LivingEntity) {
         target.hurt(target.damageSources().generic(), damage.toFloat())
+        target.remainingFireTicks = (damage * 5).toInt()
     }
 
     override fun renderParticle(projectile: Projectile) {

@@ -36,6 +36,8 @@ import net.minecraft.world.entity.ai.Brain
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.entity.projectile.Projectile
 import net.minecraft.world.entity.projectile.SmallFireball
+import net.minecraft.world.entity.projectile.windcharge.BreezeWindCharge
+import net.minecraft.world.entity.projectile.windcharge.WindCharge
 import net.minecraft.world.level.Level
 import net.minecraft.world.phys.Vec3
 import net.tslat.smartbrainlib.api.SmartBrainOwner
@@ -99,8 +101,6 @@ class PokemonMixin(
         if (move != null && target != null) {
             applyDamageToTarget(target, calculateMoveDamage(move, target))
             updateTargetBehavior(target)
-
-            useRangedMove(move, target)
         }
     }
 
@@ -117,14 +117,15 @@ class PokemonMixin(
             val projectile: Projectile?
             val moveType = move.type
 
-            when(move.type) { // Determine the projectile type based on the move's type
-                ElementalTypes.FIRE -> projectile = SmallFireball(level(), this, Vec3.ZERO)
+            projectile = when(moveType) { // Determine the projectile type based on the move's type
+                ElementalTypes.FIRE -> SmallFireball(level(), this, Vec3.ZERO)
+                ElementalTypes.ICE -> WindCharge(level(), x, y, z, Vec3.ZERO)
                 else -> return
             }
 
             if(projectile is RangedMove) {
                 projectile.setPos(position().x, position().y + eyeHeight, position().z)
-                projectile.setMove(MoveRegistry().getMove(ElementalTypes.FIRE)!!)
+                projectile.setMove(MoveRegistry().getMove(moveType)!!)
                 projectile.setMoveDamage(calculateMoveDamage(move, target))
 
                 shootProjectile(projectile, projectile.getMove()!!.speed, target)
@@ -139,7 +140,7 @@ class PokemonMixin(
      * @see useRangedMove
      */
     private fun shootProjectile(projectile : Projectile, speed : Float, target: LivingEntity?) {
-        val direction = target!!.position().subtract(0.0, (target.bbHeight / 2).toDouble(), 0.0).subtract(position()).normalize()
+        val direction = target!!.position().subtract(position()).normalize()
 
         projectile.shoot(
             direction.x, direction.y, direction.z,

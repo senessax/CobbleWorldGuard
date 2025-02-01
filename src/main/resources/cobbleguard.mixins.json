@@ -6,7 +6,8 @@
   "mixins": [
     "PokemonFollowOwnerGoalMixin",
     "PokemonMixin",
-    "ProjectileMixin"
+    "ProjectileMixin",
+    "LivingEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

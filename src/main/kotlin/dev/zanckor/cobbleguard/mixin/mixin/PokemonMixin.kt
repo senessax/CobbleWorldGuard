@@ -28,7 +28,6 @@ import dev.zanckor.cobbleguard.util.Timer
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
-import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
@@ -189,21 +188,17 @@ class PokemonMixin(
      * Applies damage to the target entity.
      *
      * @param target The entity receiving damage
-     * @param damage Amount of damage to be applied
+     * @param bruteDamage Amount of damage to be applied
      */
-    private fun applyDamageToTarget(target: LivingEntity, damage: Double) {
+    private fun applyDamageToTarget(target: LivingEntity, bruteDamage: Double) {
+        var damage = bruteDamage
+
+        if(target is PokemonEntity) {
+            val defense = target.pokemon.getStat(Stats.DEFENCE).toFloat() / 300.0
+            damage *= (1 - defense)
+        }
+
         target.hurt(damageSources().mobAttack(this), damage.toFloat())
-    }
-
-    /**
-     * Handles the entity being attacked by another entity.
-     * Reduces damage taken by a factor based on Pokémon defense stat.
-     */
-    override fun hurt(damageSource: DamageSource, f: Float): Boolean {
-        val damage = f.toDouble()
-        val defense = pokemon!!.getStat(Stats.DEFENCE).toFloat() / 75.0
-
-        return super.hurt(damageSource, (damage * defense).toFloat())
     }
 
     /**

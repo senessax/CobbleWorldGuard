@@ -21,6 +21,7 @@ import dev.zanckor.cobbleguard.core.brain.sensor.NearestWildTargetSensor
 import dev.zanckor.cobbleguard.core.brain.task.DefendOwnerTask
 import dev.zanckor.cobbleguard.core.brain.task.WildBehaviourTask
 import dev.zanckor.cobbleguard.core.rangedattacks.MoveRegistry
+import dev.zanckor.cobbleguard.core.rangedattacks.moves.TeleporationMove
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity
 import dev.zanckor.cobbleguard.mixin.mixininterface.RangedMove
@@ -28,6 +29,7 @@ import dev.zanckor.cobbleguard.util.Timer
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
+import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
@@ -122,6 +124,15 @@ class PokemonMixin(
                 ElementalTypes.FIRE -> SmallFireball(level(), this, Vec3.ZERO)
                 ElementalTypes.ICE -> WindCharge(level(), x, y, z, Vec3.ZERO)
                 ElementalTypes.POISON -> WitherSkull(level(), this, Vec3.ZERO)
+                ElementalTypes.PSYCHIC -> {
+                    if(random.nextIntBetweenInclusive(0, 10) <= 1) {
+                        TeleporationMove().applyEffect(pokemon!!.entity!!, target)
+                        return
+                    } else {
+                        WindCharge(level(), x, y, z, Vec3.ZERO)
+                    }
+                }
+
                 else -> return
             }
 
@@ -193,15 +204,15 @@ class PokemonMixin(
      * @param target The entity receiving damage
      * @param bruteDamage Amount of damage to be applied
      */
-    private fun applyDamageToTarget(target: LivingEntity, bruteDamage: Double) {
-        var damage = bruteDamage
-
-        if(target is PokemonEntity) {
-            val defense = target.pokemon.getStat(Stats.DEFENCE).toFloat() / 300.0
-            damage *= (1 - defense)
-        }
-
+    private fun applyDamageToTarget(target: LivingEntity, damage: Double) {
         target.hurt(damageSources().mobAttack(this), damage.toFloat())
+    }
+
+    override fun hurt(damageSource: DamageSource, f: Float): Boolean {
+        val defense = pokemon!!.getStat(Stats.DEFENCE).toFloat() / 300.0
+        val damage = f * (1 - defense)
+
+        return super.hurt(damageSource, damage.toFloat())
     }
 
     /**

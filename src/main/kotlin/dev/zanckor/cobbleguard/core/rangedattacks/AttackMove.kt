@@ -1,6 +1,7 @@
 package dev.zanckor.cobbleguard.core.rangedattacks
 
 import com.cobblemon.mod.common.api.types.ElementalType
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.projectile.Projectile
 
@@ -11,7 +12,7 @@ interface AttackMove {
     val speed : Float
     var damage : Double
 
-    fun applyEffect(target: LivingEntity)
+    fun applyEffect(owner: PokemonEntity, target: LivingEntity)
 
     fun renderParticle(projectile: Projectile) {
     }

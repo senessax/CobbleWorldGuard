@@ -1,5 +1,6 @@
 package dev.zanckor.cobbleguard.mixin.mixin
 
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
 import dev.zanckor.cobbleguard.mixin.mixininterface.RangedMove
 import net.minecraft.world.entity.Entity
@@ -16,6 +17,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 abstract class ProjectileMixin : RangedMove {
 
     @Unique
+    private var owner: PokemonEntity? = null
+
+    @Unique
     private var move: AttackMove? = null
 
     override fun setMove(move: AttackMove?) {
@@ -30,12 +34,21 @@ abstract class ProjectileMixin : RangedMove {
         move?.damage = damage
     }
 
+    override fun getOwner(): PokemonEntity? {
+        return owner
+    }
+
+    override fun setOwner(owner: PokemonEntity?) {
+        this.owner = owner
+    }
+
     @Inject(method = ["onHitEntity"], at = [At("HEAD")])
     private fun onHitEntity(entityHitResult: EntityHitResult, ci: CallbackInfo) {
         move?.let {
             val entity = entityHitResult.entity
-            if (entity is LivingEntity) {
-                it.applyEffect(entity)
+
+            if (entity is LivingEntity && owner != null) {
+                it.applyEffect(owner!!, entity)
             }
         }
     }

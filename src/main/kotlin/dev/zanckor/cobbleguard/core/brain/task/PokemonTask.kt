@@ -25,8 +25,9 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
         // If the entity is more than X blocks away from the position, and the entity is not already moving to the position, move to it
         if (distanceToMove > distance && (navigationPosition == null || navigationPosition.distSqr(movePosition) > 5.0)) {
             val speed = (entity.pokemon.getStat(Stats.SPEED).toDouble() / 75.0)
+            val limitedSpeed = if(speed > 1.0) 1.0 else if(speed > 1.5) 1.5 else speed
 
-            entity.getNavigation().moveTo(movePosition.x.toDouble(), movePosition.y.toDouble(), movePosition.z.toDouble(), if(speed < 1.0) 1.0 else speed)
+            entity.getNavigation().moveTo(movePosition.x.toDouble(), movePosition.y.toDouble(), movePosition.z.toDouble(), limitedSpeed)
         }
 
         return distanceToMove <= (distance * 1.25)

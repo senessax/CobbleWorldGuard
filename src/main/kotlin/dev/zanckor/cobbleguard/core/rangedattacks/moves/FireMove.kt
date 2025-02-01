@@ -1,6 +1,7 @@
-package dev.zanckor.cobbleguard.core.rangedattacks
+package dev.zanckor.cobbleguard.core.rangedattacks.moves
 
 import com.cobblemon.mod.common.api.types.ElementalType
+import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity

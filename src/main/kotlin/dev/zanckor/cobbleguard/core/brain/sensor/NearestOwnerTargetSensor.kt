@@ -5,6 +5,7 @@ import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEARE
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonSensors
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity.*
+import dev.zanckor.cobbleguard.util.CobbleUtil
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.TamableAnimal
@@ -30,8 +31,6 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
         getTarget(entity)?.let {
             if(entity.distanceToSqr(it) > 100.0) return
             pokemonEntity.brain.setMemory(NEAREST_OWNER_TARGET, it)
-
-            entity.lookAt(it, 30.0f, 30.0f)
         }
 
         super.doTick(level, entity)
@@ -74,7 +73,7 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
         if(defensiveTarget != null) return defensiveTarget
 
         val level = entity.level()
-        val nearbyEntities = level.getEntities(entity, entity.boundingBox.inflate(10.0)) { it is Monster }
+        val nearbyEntities = level.getEntities(entity, entity.boundingBox.inflate(15.0)) { it is Monster }
 
         return nearbyEntities.minByOrNull { entity.distanceToSqr(it) } as? LivingEntity
     }
@@ -84,7 +83,7 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
         if(defensiveTarget != null) return defensiveTarget
 
         val level = entity.level()
-        val nearbyEntity = level.getEntities(entity, entity.boundingBox.inflate(10.0)) {
+        val nearbyEntity = level.getEntities(entity, entity.boundingBox.inflate(15.0)) {
             val isOwner = it.uuid.equals(entity.pokemon.getOwnerUUID())
             val isItself = it.uuid.equals(entity.uuid)
 
@@ -94,7 +93,7 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
                 return@getEntities it.ownerUUID != entity.pokemon.getOwnerUUID()
             }
 
-            true
+            return@getEntities true
         }
 
         return nearbyEntity.minByOrNull { entity.distanceToSqr(it) } as? LivingEntity

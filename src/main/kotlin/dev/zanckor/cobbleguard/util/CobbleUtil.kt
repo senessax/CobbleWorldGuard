@@ -1,8 +1,17 @@
 package dev.zanckor.cobbleguard.util
 
+import com.cobblemon.mod.common.CobblemonNetwork.sendPacket
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import com.cobblemon.mod.common.net.messages.client.animation.PlayPosableAnimationPacket
+import com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormParticlePacket
+import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.phys.Vec3
+import kotlin.math.atan2
 
 object CobbleUtil {
 
@@ -76,4 +85,62 @@ object CobbleUtil {
 
         return pokemonDefenseStats
     }
+
+    /**
+     * Sends a bedrock particle to nearby players
+     * @param livingEntity The entity that will send the particle
+     * @param position The position where the particle will be sent
+     * @param particle The particle to be sent
+     */
+    fun sendBedrockParticle(livingEntity: LivingEntity, position: Vec3, particle: ResourceLocation) {
+        val nearbyPlayers = livingEntity.level().players().filter { it.distanceTo(livingEntity) < 1000 }
+
+        nearbyPlayers.forEach {
+            (it as ServerPlayer).sendPacket(
+                SpawnSnowstormParticlePacket(
+                particle,
+                position)
+            )
+        }
+    }
+
+    /**
+     * Makes a Pokemon look at a target entity
+     * @param pokemon The Pokemon entity that will look at the target
+     * @param target The target entity to look at
+     * @see ClientboundRotateHeadPacket
+     */
+    fun lookAt(pokemon: PokemonEntity, target: LivingEntity) {
+        val deltaX = target.x - pokemon.x
+        val deltaZ = target.z - pokemon.z
+
+        val yaw = Math.toDegrees(atan2(-deltaX, deltaZ)).toFloat()
+
+        pokemon.yRot = yaw
+        pokemon.yHeadRot = yaw
+
+        if (pokemon.level() is ServerLevel) {
+            val headRotationPacket = ClientboundRotateHeadPacket(pokemon, (yaw * 256.0f / 360.0f).toInt().toByte())
+            (pokemon.level() as ServerLevel).players().forEach { player ->
+                player.connection.send(headRotationPacket)
+            }
+        }
+    }
+
+
+    /**
+     * Plays a swing animation for the attacking Pokemon
+     * @param entity The Pokemon entity that is attacking
+     */
+    fun playAnimation(entity: PokemonEntity, animation: String) {
+        entity.pokemon.getOwnerPlayer()?.let { player ->
+            val animationPacket = PlayPosableAnimationPacket(
+                entity.id,
+                setOf(animation),
+                emptyList()
+            )
+            player.sendPacket(animationPacket)
+        }
+    }
+
 }

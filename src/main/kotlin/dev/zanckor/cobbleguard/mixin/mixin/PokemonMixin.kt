@@ -25,6 +25,7 @@ import dev.zanckor.cobbleguard.core.rangedattacks.moves.TeleporationMove
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity
 import dev.zanckor.cobbleguard.mixin.mixininterface.RangedMove
+import dev.zanckor.cobbleguard.util.CobbleUtil
 import dev.zanckor.cobbleguard.util.Timer
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
@@ -387,12 +388,5 @@ class PokemonMixin(
 
     override fun customServerAiStep() {
         tickBrain(this)
-    }
-
-    @Inject(method = ["tick"], at = [At("HEAD")])
-    fun onTick(callbackInfo: CallbackInfo) {
-        if (target != null) {
-            lookAt(target!!, 30.0f, 30.0f)
-        }
     }
 }

@@ -1,6 +1,7 @@
 package dev.zanckor.cobbleguard.core.rangedattacks.moves
 
 import com.cobblemon.mod.common.api.types.ElementalType
+import com.cobblemon.mod.common.client.render.SnowstormParticle
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
 import net.minecraft.core.particles.ParticleTypes
@@ -27,6 +28,7 @@ class FireMove(
         val level = projectile.level()
         if (level !is ServerLevel) return
 
+        /*
         val numParticles = 5
         val radius = 0.15
         val heightStep = 0
@@ -44,5 +46,6 @@ class FireMove(
 
             level.sendParticles(ParticleTypes.FLAME, x, y, z, 1, 0.0, 0.0, 0.0, 0.0)
         }
+         */
     }
 }

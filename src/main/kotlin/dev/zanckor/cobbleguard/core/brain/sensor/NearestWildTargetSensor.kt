@@ -3,6 +3,7 @@ package dev.zanckor.cobbleguard.core.brain.sensor
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_WILD_POKEMON_TARGET
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonSensors
+import dev.zanckor.cobbleguard.util.CobbleUtil
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.ai.memory.MemoryModuleType
@@ -25,7 +26,6 @@ class NearestWildTargetSensor : ExtendedSensor<LivingEntity>() {
         val attacker = pokemonEntity.lastAttacker
         if (attacker?.isAlive == true) {
             pokemonEntity.brain.setMemory(NEAREST_WILD_POKEMON_TARGET, attacker)
-            entity.lookAt(attacker, 30.0f, 30.0f)
         }
 
         super.doTick(level, entity)

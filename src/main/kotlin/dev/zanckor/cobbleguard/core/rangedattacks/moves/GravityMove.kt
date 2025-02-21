@@ -6,6 +6,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
 import dev.zanckor.cobbleguard.mixin.mixin.PokemonMixin
 import dev.zanckor.cobbleguard.mixin.mixininterface.EffectContainer
+import dev.zanckor.cobbleguard.util.CobbleUtil
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
@@ -28,25 +29,6 @@ class GravityMove(
     }
 
     override fun renderParticle(projectile: Projectile) {
-        val level = projectile.level()
-        if (level !is ServerLevel) return
-
-        val numParticles = 30
-        val radius = 0.5
-        val particleSpeed = 0.05
-        val startY = projectile.y
-        val duration = 5
-
-        val timeElapsed = System.currentTimeMillis() / 1000.0
-
-        for (i in 0 until numParticles) {
-            val angle = (i.toDouble() / numParticles) * 2 * Math.PI
-            val xOffset = cos(angle) * radius
-            val zOffset = sin(angle) * radius
-            val y = startY - 1
-            val x = projectile.x + xOffset
-            val z = projectile.z + zOffset
-            level.sendParticles(ParticleTypes.PORTAL, x, y, z, 1, 0.0, 0.0, 0.0, particleSpeed)
-        }
+        CobbleUtil.summonRangedParticles(projectile.owner as PokemonEntity, CobbleUtil.HYPNOSIS)
     }
 }

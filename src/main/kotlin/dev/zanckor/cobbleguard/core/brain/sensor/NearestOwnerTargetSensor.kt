@@ -3,6 +3,7 @@ package dev.zanckor.cobbleguard.core.brain.sensor
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonSensors
+import dev.zanckor.cobbleguard.listener.RemoteTargetListener
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity.*
 import dev.zanckor.cobbleguard.util.CobbleUtil
@@ -13,9 +14,11 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.entity.ai.sensing.SensorType
 import net.minecraft.world.entity.monster.Monster
 import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
+import java.util.UUID
 
 @Suppress("SENSELESS_COMPARISON")
 class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
+
     override fun memoriesUsed(): MutableList<MemoryModuleType<*>> {
         return mutableListOf(NEAREST_OWNER_TARGET)
     }
@@ -47,6 +50,16 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
 
     private fun getNewTarget(pokemonEntity: PokemonEntity): LivingEntity? {
         if((pokemonEntity as Hostilemon).aggressivity == null) pokemonEntity.aggressivity = DEFENSIVE
+        val aggresivity = (pokemonEntity as Hostilemon).aggressivity
+
+        if(aggresivity == STAY || aggresivity == PASSIVE) return null
+        if(RemoteTargetListener.playerRemoteTarget.getOrDefault(pokemonEntity.pokemon.getOwnerUUID(), null) != null) {
+            val remoteTarget = RemoteTargetListener.playerRemoteTarget[pokemonEntity.pokemon.getOwnerUUID()]
+            if(remoteTarget != null && remoteTarget.isAlive) {
+                pokemonEntity.target = remoteTarget
+                return remoteTarget
+            }
+        }
 
         return when((pokemonEntity as Hostilemon).aggressivity) {
             STAY, PASSIVE -> null

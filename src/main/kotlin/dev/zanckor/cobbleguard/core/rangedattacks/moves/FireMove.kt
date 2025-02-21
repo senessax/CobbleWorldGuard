@@ -4,7 +4,9 @@ import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.client.render.SnowstormParticle
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
+import dev.zanckor.cobbleguard.util.CobbleUtil
 import net.minecraft.core.particles.ParticleTypes
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.projectile.Projectile
@@ -25,27 +27,6 @@ class FireMove(
     }
 
     override fun renderParticle(projectile: Projectile) {
-        val level = projectile.level()
-        if (level !is ServerLevel) return
-
-        /*
-        val numParticles = 5
-        val radius = 0.15
-        val heightStep = 0
-        val turns = 1
-
-        for (i in 0 until (numParticles * turns)) {
-            val angle = (i.toDouble() / numParticles) * (2 * Math.PI)
-            val xOffset = cos(angle) * radius
-            val zOffset = sin(angle) * radius
-            val yOffset = (i.toDouble() * heightStep) - ((numParticles * turns) * heightStep) / 2
-
-            val x = projectile.x + xOffset
-            val y = projectile.y + yOffset
-            val z = projectile.z + zOffset
-
-            level.sendParticles(ParticleTypes.FLAME, x, y, z, 1, 0.0, 0.0, 0.0, 0.0)
-        }
-         */
+        CobbleUtil.summonRangedParticles(projectile.owner as PokemonEntity, CobbleUtil.FLAMETHROWER)
     }
 }

@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.types.ElementalTypes
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
 import dev.zanckor.cobbleguard.mixin.mixin.PokemonMixin
+import dev.zanckor.cobbleguard.util.CobbleUtil
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
@@ -65,5 +66,6 @@ class TeleporationMove(
     }
 
     override fun renderParticle(projectile: Projectile) {
+        CobbleUtil.summonRangedParticles(projectile.owner as PokemonEntity, CobbleUtil.FLAMETHROWER)
     }
 }

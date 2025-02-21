@@ -1,19 +1,34 @@
 package dev.zanckor.cobbleguard.util
 
 import com.cobblemon.mod.common.CobblemonNetwork.sendPacket
+import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
+import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.net.messages.client.animation.PlayPosableAnimationPacket
+import com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormEntityParticlePacket
 import com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormParticlePacket
 import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.sounds.SoundEvent
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.phys.Vec3
 import kotlin.math.atan2
+import kotlin.math.max
 
 object CobbleUtil {
+
+    val HIT = ResourceLocation.fromNamespaceAndPath("cobblemon", "hit")
+    val FLAMETHROWER = ResourceLocation.fromNamespaceAndPath("cobblemon", "flamethrower_actor")
+    val BUBBLEBEAM = ResourceLocation.fromNamespaceAndPath("cobblemon", "bubblebeam_actor")
+    val HYPNOSIS = ResourceLocation.fromNamespaceAndPath("cobblemon", "hypnosis_actor")
+    val POISONPOWDER = ResourceLocation.fromNamespaceAndPath("cobblemon", "poisonpowder")
+
+    fun TYPE_HIT(elementalType: ElementalType) = ResourceLocation.fromNamespaceAndPath(
+        "cobblemon",
+        "impact_${elementalType.name.lowercase()}"
+    )
 
     /**
      * Determines if a Pokemon must run away from another entity if attacked
@@ -39,7 +54,7 @@ object CobbleUtil {
      * @param pokemonEntity The Pokemon that is being attacked
      * @param attackerPokemonEntity The Pokemon that is attacking
      */
-    fun mustRunAwayPokemon(pokemonEntity: PokemonEntity, attackerPokemonEntity: PokemonEntity): Boolean {
+    private fun mustRunAwayPokemon(pokemonEntity: PokemonEntity, attackerPokemonEntity: PokemonEntity): Boolean {
         val attackerCombatStats = calculateCombatStats(attackerPokemonEntity)
 
         val pokemonCombatStats = calculateCombatStats(pokemonEntity)
@@ -88,18 +103,31 @@ object CobbleUtil {
 
     /**
      * Sends a bedrock particle to nearby players
-     * @param livingEntity The entity that will send the particle
-     * @param position The position where the particle will be sent
+     * @param livingEntity The entity at where the particle will be summoned
      * @param particle The particle to be sent
      */
-    fun sendBedrockParticle(livingEntity: LivingEntity, position: Vec3, particle: ResourceLocation) {
+    private fun sendBedrockEntityParticle(livingEntity: LivingEntity, particle: ResourceLocation) {
         val nearbyPlayers = livingEntity.level().players().filter { it.distanceTo(livingEntity) < 1000 }
 
         nearbyPlayers.forEach {
             (it as ServerPlayer).sendPacket(
+                SpawnSnowstormEntityParticlePacket(
+                    particle,
+                    livingEntity.id,
+                    listOf("target"))
+            )
+        }
+    }
+
+    private fun sendBedrockParticle(livingEntity: LivingEntity, particle: ResourceLocation) {
+        val nearbyPlayers = livingEntity.level().players().filter { it.distanceTo(livingEntity) < 1000 }
+        val lastAttackerHeight = livingEntity.lastHurtByMob?.bbHeight?.div(2)?.let { max(it, livingEntity.bbHeight) } ?: livingEntity.eyeHeight
+
+        nearbyPlayers.forEach {
+            (it as ServerPlayer).sendPacket(
                 SpawnSnowstormParticlePacket(
-                particle,
-                position)
+                    particle,
+                    livingEntity.position().add(0.0, lastAttackerHeight.toDouble(), 0.0),)
             )
         }
     }
@@ -143,4 +171,36 @@ object CobbleUtil {
         }
     }
 
+    fun getSoundByName(soundName: String): SoundEvent? {
+        CobblemonSounds.all().filter { it.location.toString().contains(soundName) }.forEach {
+            return it
+        }
+
+        return null
+    }
+
+    /**
+     * Summons hit particles at the target entity's position
+     * @param target The Pokemon entity that is being attacked
+     * @param resourceLocation The resource location of the particle
+     */
+    fun summonHitParticles(
+        target: LivingEntity,
+        resourceLocation: ResourceLocation
+    ) {
+        sendBedrockParticle(target, resourceLocation)
+    }
+
+    /**
+     * Summons ranged particles at the entity's position
+     * @param entity The Pokemon entity that is attacking
+     * @param resourceLocation The resource location of the particle
+     * @see sendBedrockEntityParticle
+     */
+    fun summonRangedParticles(
+        entity: LivingEntity,
+        resourceLocation: ResourceLocation
+    ) {
+        sendBedrockEntityParticle(entity, resourceLocation)
+    }
 }

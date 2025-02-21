@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.types.ElementalTypes
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
 import dev.zanckor.cobbleguard.mixin.mixininterface.EffectContainer
+import dev.zanckor.cobbleguard.util.CobbleUtil
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.effect.MobEffectInstance
@@ -59,22 +60,6 @@ class PoisonMove(
     }
 
     override fun renderParticle(projectile: Projectile) {
-        val level = projectile.level()
-        if (level !is ServerLevel) return
-
-        val direction = projectile.deltaMovement.normalize()
-        val offset = direction.scale(-0.5)
-        val offset2 = direction.scale(-0.25)
-
-        val positions = listOf(
-            Triple(projectile.x + offset.x, projectile.y, projectile.z + offset.z),
-            Triple(projectile.x - offset.x, projectile.y, projectile.z - offset.z),
-            Triple(projectile.x + offset2.x, projectile.y, projectile.z + offset2.z),
-            Triple(projectile.x - offset2.x, projectile.y, projectile.z - offset2.z),
-        )
-
-        positions.forEach { (x, y, z) ->
-            level.sendParticles(ParticleTypes.TRIAL_OMEN, x, y, z, 1, 0.0, 0.0, 0.0, 0.0)
-        }
+        CobbleUtil.summonRangedParticles(projectile.owner as PokemonEntity, CobbleUtil.POISONPOWDER)
     }
 }

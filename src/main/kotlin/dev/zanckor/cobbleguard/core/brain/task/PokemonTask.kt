@@ -1,5 +1,7 @@
 package dev.zanckor.cobbleguard.core.brain.task
 
+import com.cobblemon.mod.common.CobblemonSounds
+import com.cobblemon.mod.common.api.moves.Move
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
@@ -11,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.minecraft.core.BlockPos
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.LivingEntity
 import net.tslat.smartbrainlib.api.core.behaviour.ExtendedBehaviour
 
@@ -22,23 +23,18 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
     companion object {
         private const val MIN_MOVEMENT_SPEED = 1.0
         private const val MAX_MOVEMENT_SPEED = 2.5
-        private const val ATTACK_COOLDOWN = 2.0
-        private const val ANIMATION_COOLDOWN = 2.0
-        private const val MELEE_RANGE = 25.0
+
+        private const val ATTACK_COOLDOWN = 3.0
+        private const val ANIMATION_COOLDOWN = 3.0
+
+        private const val MELEE_RANGE = 15.0
+
         private const val MELEE_ANIMATION_DELAY = 1200L
-        private const val SPECIAL_ANIMATION_COOLDOWN = 1500L
+        private const val RANGED_ATTACK_DELAY = 1000L
+
 
         private const val SPECIAL_ANIMATION = "special"
         private const val PHYSICAL_ANIMATION = "physical"
-
-        private val HIT = ResourceLocation.fromNamespaceAndPath("cobblemon", "hit")
-        private val PHYCHIC = ResourceLocation.fromNamespaceAndPath("cobblemon", "psychic_impactdots")
-        private val ON_FIRE = ResourceLocation.fromNamespaceAndPath("cobblemon", "flamethrower_target_linger")
-
-        private fun TYPE_HIT(elementalType: ElementalType) = ResourceLocation.fromNamespaceAndPath(
-            "cobblemon",
-            "impact_${elementalType.name.lowercase()}"
-        )
     }
 
     /**
@@ -86,7 +82,7 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
         CobbleUtil.lookAt(pokemon, target)
 
         when {
-            distanceToTarget > MELEE_RANGE -> executeRangedAttack(pokemon, hostilemon, target)
+            distanceToTarget > (MELEE_RANGE * 2) -> executeRangedAttack(pokemon, hostilemon, target)
             else -> executeMeleeAttack(pokemon, hostilemon, target)
         }
 
@@ -133,17 +129,20 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
         hostilemon: Hostilemon,
         target: LivingEntity
     ) {
-        CoroutineScope(Dispatchers.IO).launch {
-            delay(SPECIAL_ANIMATION_COOLDOWN)
-            summonHitParticles(pokemon, target, HIT)
-            summonHitParticles(pokemon, target, TYPE_HIT(pokemon.pokemon.primaryType))
+        @Suppress("SENSELESS_COMPARISON")
+        if(pokemon == null) return
 
-            hostilemon.useRangedMove(hostilemon.getBestMoveAgainst(target), target)
-            CobbleUtil.lookAt(pokemon, target)
+        val move = hostilemon.getBestMoveAgainst(target)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            delay(RANGED_ATTACK_DELAY)
+            hostilemon.useRangedMove(move, target)
+            playMoveSound(move, pokemon, target)
         }
 
         if (Timer.hasReached("${pokemon.stringUUID}_attack_animation_cooldown", ANIMATION_COOLDOWN)) {
             CobbleUtil.playAnimation(pokemon, SPECIAL_ANIMATION)
+            CobbleUtil.lookAt(pokemon, target)
         }
     }
 
@@ -158,32 +157,33 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
         hostilemon: Hostilemon,
         target: LivingEntity
     ) {
+        val move = hostilemon.getBestMoveAgainst(target)
+        val pokemonType = pokemon.pokemon.primaryType
+
         CoroutineScope(Dispatchers.IO).launch {
             delay(MELEE_ANIMATION_DELAY)
-            summonHitParticles(pokemon, target, HIT)
-            summonHitParticles(pokemon, target, TYPE_HIT(pokemon.pokemon.primaryType))
 
-            hostilemon.usePhysicalMove(hostilemon.getBestMoveAgainst(target), target)
-            CobbleUtil.lookAt(pokemon, target)
+            playImpactSound(pokemon, pokemonType)
+            hostilemon.usePhysicalMove(move, target)
         }
 
         if (Timer.hasReached("${pokemon.stringUUID}_attack_animation_cooldown", ANIMATION_COOLDOWN)) {
             CobbleUtil.playAnimation(pokemon, PHYSICAL_ANIMATION)
+            CobbleUtil.lookAt(pokemon, target)
         }
     }
 
-    /**
-     * Summons hit particles at the target entity's position
-     * @param entity The Pokemon entity that is attacking
-     * @param target The entity that is being attacked
-     * @param resourceLocation The resource location of the particle
-     */
-    private fun summonHitParticles(
-        entity: PokemonEntity,
-        target: LivingEntity,
-        resourceLocation: ResourceLocation
-    ) {
-        val targetPosition = target.position().add(0.0, target.eyeHeight.toDouble(), 0.0)
-        CobbleUtil.sendBedrockParticle(entity, targetPosition, resourceLocation)
+
+    private fun playMoveSound(move: Move?, pokemon: PokemonEntity, target: LivingEntity) {
+        val moveName = move?.name?.lowercase() ?: "none"
+        val moveSound = CobbleUtil.getSoundByName("move.$moveName.actor") ?: CobblemonSounds.IMPACT_NORMAL
+
+        pokemon.level().playSound(null, target.blockPosition(), moveSound, target.soundSource, 2.0f, 1.0f)
+    }
+
+    private fun playImpactSound(pokemon: PokemonEntity, pokemonType: ElementalType) {
+        val impactSound = CobbleUtil.getSoundByName("impact.${pokemonType.name.lowercase()}") ?: CobblemonSounds.IMPACT_NORMAL
+
+        pokemon.level().playSound(null, pokemon.blockPosition(), impactSound, pokemon.soundSource, 2.0f, 1.0f)
     }
 }

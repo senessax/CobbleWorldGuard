@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.At
 import org.spongepowered.asm.mixin.injection.Inject
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 
+@Suppress("CAST_NEVER_SUCCEEDS")
 @Mixin(Projectile::class)
 abstract class ProjectileMixin : RangedMove {
 
@@ -56,13 +57,17 @@ abstract class ProjectileMixin : RangedMove {
     @Inject(method = ["tick"], at = [At("HEAD")])
     private fun onTick(ci: CallbackInfo) {
         move?.let {
-            (this as Projectile).apply {
-                it.renderParticle(this)
+            with(this as Projectile) {
                 isNoGravity = true
                 if (tickCount >= 200) {
                     remove(Entity.RemovalReason.DISCARDED)
                 }
             }
         }
+    }
+
+    @Inject(method = ["shoot"], at = [At("HEAD")])
+    private fun onShoot(ci: CallbackInfo) {
+        move?.renderParticle(this as Projectile)
     }
 }

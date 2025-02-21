@@ -37,7 +37,6 @@ class IceMove(
         val heightStep = 0.25
         val particleHeight = 3.0
 
-        // Cuatro direcciones en las que se distribuirán los picos
         val angles = arrayOf(0.0, Math.PI / 2, Math.PI, 3 * Math.PI / 2)
 
         for (angleOffset in angles) {

@@ -146,7 +146,7 @@ class PokemonMixin(
                 projectile.setPos(position().x, position().y + (bbHeight / 2), position().z)
                 projectile.setMove(MoveRegistry().getMove(moveType)!!)
                 projectile.setMoveDamage(calculateMoveDamage(move, target))
-                projectile.setOwner(pokemon.entity!!)
+                projectile.setOwner(this)
 
                 shootProjectile(projectile, projectile.getMove()!!.speed, target)
             }

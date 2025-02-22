@@ -4,12 +4,11 @@ import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
 import dev.zanckor.cobbleguard.util.CobbleUtil
-import net.minecraft.world.effect.MobEffectInstance
-import net.minecraft.world.effect.MobEffects
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.projectile.Projectile
+import net.minecraft.world.level.Level
 
-class PoisonMove(
+class ElectricMove(
     override var isRanged: Boolean,
     override val isTickEffect: Boolean,
     override val type: ElementalType?,
@@ -19,12 +18,14 @@ class PoisonMove(
 
     override fun applyEffect(owner: PokemonEntity, target: LivingEntity) {
         target.hurt(target.damageSources().generic(), damage.toFloat())
-        target.addEffect(MobEffectInstance(MobEffects.POISON, 30, 2))
+
+        target.level().explode(null, target.x, target.y, target.z, 5.0F, false, Level.ExplosionInteraction.MOB)
     }
 
-    override fun renderParticleOnAttack(projectile: Projectile) {
-        if(projectile.owner == null) return
-
-        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.POISONPOWDER)
+    override fun renderTickParticle(projectile: Projectile) {
+        CobbleUtil.summonHitParticles(projectile.level(), projectile.position().add(.0, .75, .0), CobbleUtil.ELECTRICIMPACT)
+        CobbleUtil.summonHitParticles(projectile.level(), projectile.position().add(.0, .5, .0), CobbleUtil.ELECTRICIMPACT)
+        CobbleUtil.summonHitParticles(projectile.level(), projectile.position().add(.0, .25, .0), CobbleUtil.ELECTRICIMPACT)
+        CobbleUtil.summonHitParticles(projectile.level(), projectile.position(), CobbleUtil.ELECTRICIMPACT)
     }
 }

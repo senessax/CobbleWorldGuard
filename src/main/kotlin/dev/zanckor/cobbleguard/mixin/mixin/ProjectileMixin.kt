@@ -50,6 +50,7 @@ abstract class ProjectileMixin : RangedMove {
 
             if (entity is LivingEntity && owner != null) {
                 it.applyEffect(owner!!, entity)
+                it.renderParticleOnHit(entity)
             }
         }
     }
@@ -64,10 +65,12 @@ abstract class ProjectileMixin : RangedMove {
                 }
             }
         }
+
+        move?.renderTickParticle(this as Projectile)
     }
 
     @Inject(method = ["shoot"], at = [At("HEAD")])
     private fun onShoot(ci: CallbackInfo) {
-        move?.renderParticle(this as Projectile)
+        move?.renderParticleOnAttack(this as Projectile)
     }
 }

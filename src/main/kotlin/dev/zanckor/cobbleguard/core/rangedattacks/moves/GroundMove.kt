@@ -4,12 +4,10 @@ import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
 import dev.zanckor.cobbleguard.util.CobbleUtil
-import net.minecraft.world.effect.MobEffectInstance
-import net.minecraft.world.effect.MobEffects
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.projectile.Projectile
 
-class PoisonMove(
+class GroundMove(
     override var isRanged: Boolean,
     override val isTickEffect: Boolean,
     override val type: ElementalType?,
@@ -19,12 +17,17 @@ class PoisonMove(
 
     override fun applyEffect(owner: PokemonEntity, target: LivingEntity) {
         target.hurt(target.damageSources().generic(), damage.toFloat())
-        target.addEffect(MobEffectInstance(MobEffects.POISON, 30, 2))
+        target.remainingFireTicks = (damage * 5).toInt()
     }
 
     override fun renderParticleOnAttack(projectile: Projectile) {
         if(projectile.owner == null) return
 
-        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.POISONPOWDER)
+        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.SANDATTACK)
+        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.SANDATTACK_RESIDUAL)
+    }
+
+    override fun renderParticleOnHit(target: LivingEntity) {
+        CobbleUtil.summonHitParticles(target, CobbleUtil.SANDATTACK_IMPACT)
     }
 }

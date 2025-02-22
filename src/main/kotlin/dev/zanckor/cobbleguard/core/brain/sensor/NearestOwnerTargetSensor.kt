@@ -6,7 +6,6 @@ import dev.zanckor.cobbleguard.core.brain.registry.PokemonSensors
 import dev.zanckor.cobbleguard.listener.RemoteTargetListener
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity.*
-import dev.zanckor.cobbleguard.util.CobbleUtil
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.TamableAnimal
@@ -14,7 +13,6 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.entity.ai.sensing.SensorType
 import net.minecraft.world.entity.monster.Monster
 import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
-import java.util.UUID
 
 @Suppress("SENSELESS_COMPARISON")
 class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
@@ -32,7 +30,7 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
         if (pokemonEntity.pokemon.getOwnerUUID() == null) return
 
         getTarget(entity)?.let {
-            if(entity.distanceToSqr(it) > 100.0) return
+            if (entity.distanceToSqr(it) > 100.0) return
             pokemonEntity.brain.setMemory(NEAREST_OWNER_TARGET, it)
         }
 
@@ -43,30 +41,56 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
         val pokemonEntity = entity as? PokemonEntity ?: return null
         val target = pokemonEntity.brain.getMemory(NEAREST_OWNER_TARGET).orElse(null)
 
-        if(target != null && target.isAlive && !target.isDeadOrDying) return target
+        if (target != null && target.isAlive && !target.isDeadOrDying) {
+            return target
+        }
 
-        return getNewTarget(pokemonEntity)
+        return if(pokemonEntity.lastAttacker == null) getNewTarget(pokemonEntity) else pokemonEntity.lastAttacker
     }
 
     private fun getNewTarget(pokemonEntity: PokemonEntity): LivingEntity? {
-        if((pokemonEntity as Hostilemon).aggressivity == null) pokemonEntity.aggressivity = DEFENSIVE
+        if ((pokemonEntity as Hostilemon).aggressivity == null) pokemonEntity.aggressivity = DEFENSIVE
         val aggresivity = (pokemonEntity as Hostilemon).aggressivity
+        val remoteTarget = RemoteTargetListener.playerRemoteTarget[pokemonEntity.pokemon.getOwnerUUID()]
 
-        if(aggresivity == STAY || aggresivity == PASSIVE) return null
-        if(RemoteTargetListener.playerRemoteTarget.getOrDefault(pokemonEntity.pokemon.getOwnerUUID(), null) != null) {
-            val remoteTarget = RemoteTargetListener.playerRemoteTarget[pokemonEntity.pokemon.getOwnerUUID()]
-            if(remoteTarget != null && remoteTarget.isAlive) {
-                pokemonEntity.target = remoteTarget
-                return remoteTarget
-            }
-        }
+        // If the aggressivity is STAY or PASSIVE, return null
+        if (aggresivity == STAY || aggresivity == PASSIVE) return null
 
-        return when((pokemonEntity as Hostilemon).aggressivity) {
+        // Get the target based on the aggressivity
+        val target = when ((pokemonEntity as Hostilemon).aggressivity) {
             STAY, PASSIVE -> null
             HOSTILE -> getHostileTarget(pokemonEntity)
             DEFENSIVE -> getDefensiveTarget(pokemonEntity)
             AGGRESIVE -> getAggressiveTarget(pokemonEntity)
         }
+
+        // If the target is not null, return it
+        if(target != null) return target
+
+        // Otherwise, if the remote target is not null and is alive, reasign it
+        if (remoteTarget != null && remoteTarget.isAlive && remoteTarget.distanceToSqr(pokemonEntity) < 240.0) {
+            return reasignRemoteTarget(pokemonEntity)
+        }
+
+        return null
+    }
+
+    private fun reasignRemoteTarget(pokemonEntity: PokemonEntity): LivingEntity? {
+        val remoteTarget = RemoteTargetListener.playerRemoteTarget[pokemonEntity.pokemon.getOwnerUUID()]
+        if (remoteTarget != null && remoteTarget.isAlive) {
+            pokemonEntity.target = remoteTarget
+
+            pokemonEntity.navigation.moveTo(
+                remoteTarget.x,
+                remoteTarget.y,
+                remoteTarget.z,
+                1.5
+            )
+
+            return remoteTarget
+        }
+
+        return null
     }
 
     private fun getDefensiveTarget(entity: PokemonEntity): LivingEntity? {
@@ -83,7 +107,7 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
 
     private fun getHostileTarget(entity: PokemonEntity): LivingEntity? {
         val defensiveTarget = getDefensiveTarget(entity)
-        if(defensiveTarget != null) return defensiveTarget
+        if (defensiveTarget != null) return defensiveTarget
 
         val level = entity.level()
         val nearbyEntities = level.getEntities(entity, entity.boundingBox.inflate(15.0)) { it is Monster }
@@ -93,16 +117,16 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
 
     private fun getAggressiveTarget(entity: PokemonEntity): LivingEntity? {
         val defensiveTarget = getDefensiveTarget(entity)
-        if(defensiveTarget != null) return defensiveTarget
+        if (defensiveTarget != null) return defensiveTarget
 
         val level = entity.level()
         val nearbyEntity = level.getEntities(entity, entity.boundingBox.inflate(15.0)) {
             val isOwner = it.uuid.equals(entity.pokemon.getOwnerUUID())
             val isItself = it.uuid.equals(entity.uuid)
 
-            if(isItself || isOwner) return@getEntities false
+            if (isItself || isOwner) return@getEntities false
 
-            if(it is TamableAnimal) {
+            if (it is TamableAnimal) {
                 return@getEntities it.ownerUUID != entity.pokemon.getOwnerUUID()
             }
 

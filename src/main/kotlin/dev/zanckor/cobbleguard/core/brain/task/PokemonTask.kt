@@ -73,7 +73,7 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
      * @param target The target entity
      */
     protected fun attack(pokemon: PokemonEntity, target: LivingEntity) {
-        if (!Timer.hasReached("${pokemon.stringUUID}_attack_cooldown", ATTACK_COOLDOWN)) {
+        if (!Timer.hasReached("${pokemon.stringUUID}_attack_cooldown", ATTACK_COOLDOWN) || pokemon.isBattling || (target is PokemonEntity && target.isBattling)) {
             return
         }
 

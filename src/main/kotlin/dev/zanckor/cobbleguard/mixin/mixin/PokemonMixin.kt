@@ -2,7 +2,6 @@ package dev.zanckor.cobbleguard.mixin.mixin
 
 import com.cobblemon.mod.common.api.moves.Move
 import com.cobblemon.mod.common.api.moves.MoveSet
-import com.cobblemon.mod.common.api.moves.categories.DamageCategories
 import com.cobblemon.mod.common.api.pokemon.experience.SidemodExperienceSource
 import com.cobblemon.mod.common.api.pokemon.experience.StandardExperienceCalculator
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
@@ -22,18 +21,15 @@ import dev.zanckor.cobbleguard.core.brain.sensor.NearestWildTargetSensor
 import dev.zanckor.cobbleguard.core.brain.task.DefendOwnerTask
 import dev.zanckor.cobbleguard.core.brain.task.WildBehaviourTask
 import dev.zanckor.cobbleguard.core.rangedattacks.MoveRegistry
-import dev.zanckor.cobbleguard.core.rangedattacks.moves.TeleporationMove
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity
 import dev.zanckor.cobbleguard.mixin.mixininterface.RangedMove
 import dev.zanckor.cobbleguard.util.CobbleUtil
 import dev.zanckor.cobbleguard.util.Timer
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.damagesource.DamageSource
-import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.Mob
@@ -42,6 +38,7 @@ import net.minecraft.world.entity.ai.Brain
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.entity.projectile.Projectile
 import net.minecraft.world.entity.projectile.SmallFireball
+import net.minecraft.world.entity.projectile.Snowball
 import net.minecraft.world.entity.projectile.WitherSkull
 import net.minecraft.world.entity.projectile.windcharge.WindCharge
 import net.minecraft.world.level.Level
@@ -122,36 +119,51 @@ class PokemonMixin(
      * @see usePhysicalMove
      */
     override fun useRangedMove(move: Move?, target: LivingEntity?) {
-        if (move != null && target != null && pokemon != null) {
-            val projectile: Projectile?
-            val moveType = move.type
+        if (move == null || target == null || pokemon == null) {
+            println("CobbleGuard Error: Invalid parameters in useRangedMove. Move: $move, Target: $target, Pokemon: $pokemon")
+            return
+        }
 
-            projectile = when (moveType) { // Determine the projectile type based on the move's type
-                ElementalTypes.FIRE -> SmallFireball(level(), this, Vec3.ZERO)
-                ElementalTypes.ICE, ElementalTypes.WATER -> WindCharge(level(), x, y, z, Vec3.ZERO)
-                ElementalTypes.POISON -> WitherSkull(level(), this, Vec3.ZERO)
-                ElementalTypes.PSYCHIC -> {
-                    if (random.nextIntBetweenInclusive(0, 10) <= 1) {
-                        TeleporationMove().applyEffect(pokemon.entity!!, target)
-                        return
-                    } else {
-                        WindCharge(level(), x, y, z, Vec3.ZERO)
-                    }
-                }
+        val moveType = move.type
+        var attackMove = MoveRegistry.getMove(moveType)
 
-                else -> return
+        val projectile: Projectile = when (moveType) {
+            ElementalTypes.FIRE -> SmallFireball(level(), this, Vec3.ZERO)
+            ElementalTypes.ICE, ElementalTypes.WATER, ElementalTypes.BUG, ElementalTypes.GRASS, ElementalTypes.ROCK, ElementalTypes.STEEL, ElementalTypes.GROUND -> WindCharge(level(), x, y, z, Vec3.ZERO)
+            ElementalTypes.POISON -> WitherSkull(level(), this, Vec3.ZERO)
+            ElementalTypes.ELECTRIC -> {
+                val chance = random.nextInt(0, 100)
+                attackMove = if (chance < 50) MoveRegistry.ThunderballMove else MoveRegistry.ElectricMove
+
+                Snowball(level(), target.x, target.y + 25, target.z)
             }
-
-            if (projectile is RangedMove) {
-                projectile.setPos(position().x, position().y + (bbHeight / 2), position().z)
-                projectile.setMove(MoveRegistry().getMove(moveType)!!)
-                projectile.setMoveDamage(calculateMoveDamage(move, target))
-                projectile.setOwner(this)
-
-                shootProjectile(projectile, projectile.getMove()!!.speed, target)
+            else -> {
+                return
             }
         }
+
+        if (projectile !is RangedMove) {
+            println("CobbleGuard Error: Generated projectile is not a RangedMove for $moveType")
+            return
+        }
+
+        // Adjust position only if the move is not electric
+        if (projectile.getMove() != MoveRegistry.ElectricMove) {
+            projectile.setPos(position().x, position().y + (bbHeight / 2), position().z)
+        }
+
+        // Configure and launch the projectile
+        projectile.setMove(attackMove)
+        projectile.setMoveDamage(calculateMoveDamage(move, target))
+        projectile.setOwner(this)
+
+        val speed = projectile.getMove()?.speed ?: run {
+            return@run 1F
+        }
+
+        shootProjectile(projectile, speed, target)
     }
+
 
     /**
      * Spawns and shoots a projectile towards the target entity.
@@ -160,7 +172,7 @@ class PokemonMixin(
      * @see useRangedMove
      */
     private fun shootProjectile(projectile: Projectile, speed: Float, target: LivingEntity?) {
-        val direction = target!!.position().subtract(position()).normalize()
+        val direction = target!!.position().subtract(projectile.position()).normalize()
 
         projectile.shoot(
             direction.x, direction.y, direction.z,
@@ -173,7 +185,7 @@ class PokemonMixin(
 
 
     private fun calculateMoveDamage(move: Move?, target: LivingEntity): Double {
-        if(move == null) return 20.0
+        if (move == null) return 20.0
 
         val effectiveness = calculateMoveEffectiveness(move, target)
         val basePower = if (move.power == 0.0) 20.0 else move.power
@@ -212,18 +224,40 @@ class PokemonMixin(
      * Applies damage to the target entity.
      *
      * @param target The entity receiving damage
-     * @param bruteDamage Amount of damage to be applied
+     * @param damage Amount of damage to be applied
      */
     private fun applyDamageToTarget(target: LivingEntity, damage: Double) {
-        target.hurt(damageSources().mobAttack(this), damage.toFloat())
+        if(pokemon?.entity == null) return
+
+        target.hurt(damageSources().mobAttack(pokemon.entity!!), damage.toFloat())
         target.knockback(0.5, position().x - target.position().x, position().z - target.position().z)
+
+        if(target.isDeadOrDying) {
+            CobbleUtil.summonHitParticles(pokemon.entity!!, CobbleUtil.WIN_FIGHT)
+        }
     }
 
+    /**
+     * Applies damage to the entity and updates the Pokémon's health.
+     * @param damageSource The source of the damage
+     * @param f The amount of damage to apply
+     * @return True if the entity was damaged, false otherwise
+     * @see hurt
+     */
     override fun hurt(damageSource: DamageSource, f: Float): Boolean {
         val defense = pokemon!!.getStat(Stats.DEFENCE).toFloat() / 300.0
         val damage = f * (1 - defense)
+        val result = super.hurt(damageSource, damage.toFloat())
 
-        return super.hurt(damageSource, damage.toFloat())
+        pokemon.currentHealth -= damage.toInt()
+
+        if(pokemon.currentHealth <= 0) {
+            super.hurt(damageSource, Float.MAX_VALUE) // Ensure pokemon dies
+        } else {
+            pokemon.entity!!.health = pokemon.currentHealth.toFloat() // Sets the health of the pokemon entity
+        }
+
+        return result
     }
 
     /**
@@ -363,13 +397,15 @@ class PokemonMixin(
                 DefendOwnerTask()
                     .startCondition { entity ->
                         entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent && Timer.hasReached(
-                            "${getUUID()}_task_cooldown",1.0)
+                            "${getUUID()}_task_cooldown", 1.0
+                        )
                     },
 
                 WildBehaviourTask()
                     .startCondition { entity ->
                         entity!!.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).isPresent && Timer.hasReached(
-                            "${getUUID()}_task_cooldown", 1.0)
+                            "${getUUID()}_task_cooldown", 1.0
+                        )
                     }
             )
         )

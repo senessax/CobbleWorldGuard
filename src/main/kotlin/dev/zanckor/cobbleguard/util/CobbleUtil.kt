@@ -13,17 +13,38 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundEvent
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.level.Level
+import net.minecraft.world.phys.Vec3
 import kotlin.math.atan2
 import kotlin.math.max
 
 object CobbleUtil {
 
     val HIT = ResourceLocation.fromNamespaceAndPath("cobblemon", "hit")
+
     val FLAMETHROWER = ResourceLocation.fromNamespaceAndPath("cobblemon", "flamethrower_actor")
-    val BUBBLEBEAM = ResourceLocation.fromNamespaceAndPath("cobblemon", "bubblebeam_actor")
-    val HYPNOSIS = ResourceLocation.fromNamespaceAndPath("cobblemon", "hypnosis_actor")
+    val FLAMETHROWER_TARGET = ResourceLocation.fromNamespaceAndPath("cobblemon", "flamethrower_target_linger")
+
+    val WATER_IMPACT = ResourceLocation.fromNamespaceAndPath("cobblemon", "impact_water")
+
     val POISONPOWDER = ResourceLocation.fromNamespaceAndPath("cobblemon", "poisonpowder")
+
+    val ELECTRICIMPACT = ResourceLocation.fromNamespaceAndPath("cobblemon", "impact_electric")
+
+    val SANDATTACK = ResourceLocation.fromNamespaceAndPath("cobblemon", "sandattack_actor")
+    val SANDATTACK_RESIDUAL = ResourceLocation.fromNamespaceAndPath("cobblemon", "sandattack_residual")
+    val SANDATTACK_IMPACT = ResourceLocation.fromNamespaceAndPath("cobblemon", "sandattack_impact")
+
+    val ROCK = ResourceLocation.fromNamespaceAndPath("cobblemon", "seismictoss_targetrocks")
+    val ROCKIMPACT = ResourceLocation.fromNamespaceAndPath("cobblemon", "crunch_targetrocks")
+
+    val BUGFIRE = ResourceLocation.fromNamespaceAndPath("cobblemon", "ember_fire")
+    val BUGFIRETRAIL = ResourceLocation.fromNamespaceAndPath("cobblemon", "ember_firesparks")
+    val BUGIMPACT = ResourceLocation.fromNamespaceAndPath("cobblemon", "impact_bug")
+
+    val WIN_FIGHT = ResourceLocation.fromNamespaceAndPath("cobblemon", "statup_actor")
 
     fun TYPE_HIT(elementalType: ElementalType) = ResourceLocation.fromNamespaceAndPath(
         "cobblemon",
@@ -103,21 +124,23 @@ object CobbleUtil {
 
     /**
      * Sends a bedrock particle to nearby players
-     * @param livingEntity The entity at where the particle will be summoned
+     * @param entity The entity at where the particle will be summoned
      * @param particle The particle to be sent
      */
-    private fun sendBedrockEntityParticle(livingEntity: LivingEntity, particle: ResourceLocation) {
-        val nearbyPlayers = livingEntity.level().players().filter { it.distanceTo(livingEntity) < 1000 }
+    private fun sendBedrockEntityParticle(entity: Entity, particle: ResourceLocation) {
+        val nearbyPlayers = entity.level().players().filter { it.distanceTo(entity) < 1000 }
 
         nearbyPlayers.forEach {
             (it as ServerPlayer).sendPacket(
                 SpawnSnowstormEntityParticlePacket(
                     particle,
-                    livingEntity.id,
+                    entity.id,
                     listOf("target"))
             )
         }
     }
+
+
 
     private fun sendBedrockParticle(livingEntity: LivingEntity, particle: ResourceLocation) {
         val nearbyPlayers = livingEntity.level().players().filter { it.distanceTo(livingEntity) < 1000 }
@@ -128,6 +151,18 @@ object CobbleUtil {
                 SpawnSnowstormParticlePacket(
                     particle,
                     livingEntity.position().add(0.0, lastAttackerHeight.toDouble(), 0.0),)
+            )
+        }
+    }
+
+    private fun sendBedrockParticle(level: Level, pos: Vec3, particle: ResourceLocation) {
+        val nearbyPlayers = level.players().filter { it.distanceToSqr(pos) < 1000 }
+
+        nearbyPlayers.forEach {
+            (it as ServerPlayer).sendPacket(
+                SpawnSnowstormParticlePacket(
+                    particle,
+                    pos)
             )
         }
     }
@@ -192,13 +227,27 @@ object CobbleUtil {
     }
 
     /**
+     * Summons hit particles at the target entity's position
+     * @param level The level where the particles will be summoned
+     * @param pos The position where the particles will be summoned
+     * @param resourceLocation The resource location of the particle
+     */
+    fun summonHitParticles(
+        level: Level,
+        pos: Vec3,
+        resourceLocation: ResourceLocation
+    ) {
+        sendBedrockParticle(level, pos, resourceLocation)
+    }
+
+    /**
      * Summons ranged particles at the entity's position
      * @param entity The Pokemon entity that is attacking
      * @param resourceLocation The resource location of the particle
      * @see sendBedrockEntityParticle
      */
     fun summonRangedParticles(
-        entity: LivingEntity,
+        entity: Entity,
         resourceLocation: ResourceLocation
     ) {
         sendBedrockEntityParticle(entity, resourceLocation)

@@ -1,15 +1,13 @@
 package dev.zanckor.cobbleguard.core.rangedattacks.moves
 
 import com.cobblemon.mod.common.api.types.ElementalType
-import com.cobblemon.mod.common.api.types.ElementalTypes
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
-import dev.zanckor.cobbleguard.mixin.mixininterface.EffectContainer
 import dev.zanckor.cobbleguard.util.CobbleUtil
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.projectile.Projectile
 
-class GravityMove(
+class BugMove(
     override var isRanged: Boolean,
     override val isTickEffect: Boolean,
     override val type: ElementalType?,
@@ -19,10 +17,17 @@ class GravityMove(
 
     override fun applyEffect(owner: PokemonEntity, target: LivingEntity) {
         target.hurt(target.damageSources().generic(), damage.toFloat())
-        (target as EffectContainer).addEffect(ElementalTypes.PSYCHIC, 200)
+        target.remainingFireTicks = (damage * 5).toInt()
     }
 
-    override fun renderParticle(projectile: Projectile) {
-        CobbleUtil.summonRangedParticles(projectile.owner as PokemonEntity, CobbleUtil.HYPNOSIS)
+    override fun renderParticleOnAttack(projectile: Projectile) {
+        if(projectile.owner == null) return
+
+        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.BUGFIRE)
+        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.BUGFIRETRAIL)
+    }
+
+    override fun renderParticleOnHit(target: LivingEntity) {
+        CobbleUtil.summonHitParticles(target, CobbleUtil.BUGIMPACT)
     }
 }

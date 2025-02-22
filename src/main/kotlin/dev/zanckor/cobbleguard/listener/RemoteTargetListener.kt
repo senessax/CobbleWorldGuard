@@ -24,11 +24,11 @@ object RemoteTargetListener {
         UseItemCallback.EVENT.register { player, world, hand ->
             if (world.isClientSide) return@register InteractionResultHolder.pass(player.getItemInHand(hand))
             if (player.getItemInHand(hand).`is`(STICK)) {
-                MCUtil.getEntityLookingAt(player, 60.0)?.let {
+                MCUtil.getEntityLookingAt(player, 240.0)?.let {
                     if (it !is PokemonEntity ||  it.pokemon.getOwnerUUID() != player.uuid) {
                         setRemoteTarget(player.uuid, it)
 
-                        player.sendSystemMessage(Component.literal("New Target: " + it.displayName))
+                        player.sendSystemMessage(Component.literal("New Target at ${it.blockPosition()}"))
                     }
                 }
             }

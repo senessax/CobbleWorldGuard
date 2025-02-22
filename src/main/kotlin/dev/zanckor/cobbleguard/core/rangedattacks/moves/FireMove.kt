@@ -1,17 +1,11 @@
 package dev.zanckor.cobbleguard.core.rangedattacks.moves
 
 import com.cobblemon.mod.common.api.types.ElementalType
-import com.cobblemon.mod.common.client.render.SnowstormParticle
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
 import dev.zanckor.cobbleguard.util.CobbleUtil
-import net.minecraft.core.particles.ParticleTypes
-import net.minecraft.resources.ResourceLocation
-import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.projectile.Projectile
-import kotlin.math.cos
-import kotlin.math.sin
 
 class FireMove(
     override var isRanged: Boolean,
@@ -26,7 +20,13 @@ class FireMove(
         target.remainingFireTicks = (damage * 5).toInt()
     }
 
-    override fun renderParticle(projectile: Projectile) {
-        CobbleUtil.summonRangedParticles(projectile.owner as PokemonEntity, CobbleUtil.FLAMETHROWER)
+    override fun renderParticleOnAttack(projectile: Projectile) {
+        if(projectile.owner == null) return
+
+        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.FLAMETHROWER)
+    }
+
+    override fun renderParticleOnHit(target: LivingEntity) {
+        CobbleUtil.summonHitParticles(target, CobbleUtil.FLAMETHROWER_TARGET)
     }
 }

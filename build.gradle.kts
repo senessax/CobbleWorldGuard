@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "2.1.0"
-    id("fabric-loom") version "1.9.1"
+    id("fabric-loom") version "1.10-SNAPSHOT"
     id("maven-publish")
     id("java")
 }
@@ -34,6 +34,7 @@ loom {
 
 repositories {
     mavenCentral()
+    flatDir { dirs("libs") }
     maven("https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/")
     maven("https://maven.nucleoid.xyz/")
     maven("https://jitpack.io")
@@ -55,6 +56,21 @@ dependencies {
             "-${project.property("minecraft_version")}" +
             ":${project.property("sbl_version")}")
     modImplementation("com.cobblemon:fabric:${project.property("cobblemon_version")}")
+
+    // Claim API
+    modImplementation("curse.maven:FLan-${project.property("flan_cf_id")}:${project.property("flan_cf_version")}")
+    modImplementation("curse.maven:OpenParties-${project.property("opac_cf_id")}:${project.property("opac_cf_version")}")
+    modImplementation("curse.maven:forgeconfigapiport-${project.property("forgeconfigapiport_cf_id")}:${project.property("forgeconfigapiport_cf_version")}")
+
+    // GriefDefender
+    modImplementation("luckperms:luckperms")
+    modImplementation("fabric-permissions-api-v0:fabric-permissions-api")
+    modImplementation("griefdefender:griefdefender")
+
+    // GriefDefender Apis
+    implementation("com.electronwill.night-config:core:3.8.1")
+    implementation("com.electronwill.night-config:toml:3.8.1")
+    implementation("com.electronwill.night-config:json:3.8.1")
 }
 
 tasks.processResources {

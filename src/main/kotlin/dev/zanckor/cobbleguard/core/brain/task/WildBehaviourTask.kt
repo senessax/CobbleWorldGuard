@@ -14,22 +14,23 @@ class WildBehaviourTask : PokemonTask() {
     }
 
     override fun start(pokemon: PokemonEntity?) {
-        val canAttack = Timer.hasReached("${pokemon?.stringUUID}_attack_cooldown", true)
-        val attacker = pokemon?.brain?.getMemory(NEAREST_WILD_POKEMON_TARGET)?.get()
-        if (!canAttack || attacker == null || attacker.isDeadOrDying || pokemon.distanceToSqr(attacker) > 100) {
+        val canAttack = Timer.hasReached("${pokemon?.stringUUID}_wild_attack_cooldown", true)
+        val target = pokemon?.brain?.getMemory(NEAREST_WILD_POKEMON_TARGET)?.get()
+
+        if (!canAttack || target == null || target.isDeadOrDying || pokemon.distanceToSqr(target) > 200) {
             customStop(pokemon!!)
             return
         }
 
-        pokemon.target = attacker
+        pokemon.target = target
 
         // Run away if the target is a Pokemon and the Pokemon is stronger
-        if (CobbleUtil.mustRunAway(pokemon, attacker)) {
+        if (CobbleUtil.mustRunAway(pokemon, target)) {
             runAway(pokemon)
         } else {
             // Otherwise, attack the target
-            moveToPosition(pokemon, attacker.blockPosition(), pokemon.boundingBox.size * 10)
-            attack(pokemon, attacker)
+            moveToPosition(pokemon, target.blockPosition(), pokemon.boundingBox.size * 10)
+            attack(pokemon, target)
         }
 
         super.start(pokemon)

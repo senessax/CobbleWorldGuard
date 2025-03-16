@@ -6,12 +6,16 @@ import dev.zanckor.cobbleguard.core.brain.registry.PokemonSensors
 import dev.zanckor.cobbleguard.listener.RemoteTargetListener
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity.*
+import dev.zanckor.cobbleguard.util.CobbleUtil
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.TamableAnimal
 import net.minecraft.world.entity.ai.memory.MemoryModuleType
 import net.minecraft.world.entity.ai.sensing.SensorType
 import net.minecraft.world.entity.monster.Monster
+import net.minecraft.world.entity.player.Player
 import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
 
 @Suppress("SENSELESS_COMPARISON")
@@ -65,7 +69,13 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
         }
 
         // If the target is not null, return it
-        if(target != null) return target
+        if(target != null) {
+            if(target is PokemonEntity) {
+                if(target.pokemon.getOwnerUUID() == pokemonEntity.pokemon.getOwnerUUID()) return null
+            }
+
+            return target
+        }
 
         // Otherwise, if the remote target is not null and is alive, reasign it
         if (remoteTarget != null && remoteTarget.isAlive && remoteTarget.distanceToSqr(pokemonEntity) < 240.0) {
@@ -116,23 +126,27 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
     }
 
     private fun getAggressiveTarget(entity: PokemonEntity): LivingEntity? {
-        val defensiveTarget = getDefensiveTarget(entity)
-        if (defensiveTarget != null) return defensiveTarget
+        if(entity.lastAttacker != null && entity.lastAttacker!!.isAlive) return entity.lastAttacker
 
         val level = entity.level()
-        val nearbyEntity = level.getEntities(entity, entity.boundingBox.inflate(15.0)) {
-            val isOwner = it.uuid.equals(entity.pokemon.getOwnerUUID())
-            val isItself = it.uuid.equals(entity.uuid)
-
-            if (isItself || isOwner) return@getEntities false
-
-            if (it is TamableAnimal) {
-                return@getEntities it.ownerUUID != entity.pokemon.getOwnerUUID()
-            }
-
-            return@getEntities true
+        val nearbyEntity = level.getEntities(entity, entity.boundingBox.inflate(15.0)) { target ->
+            canAttack(entity, target)
         }
 
         return nearbyEntity.minByOrNull { entity.distanceToSqr(it) } as? LivingEntity
     }
+
+    private fun canAttack(entity: LivingEntity, target: Entity): Boolean {
+        if (CobbleUtil.isPlushie(target) || CobbleUtil.isBoss(target) || CobbleUtil.isPokestop(target)) return false
+        if (CobbleUtil.isPlushie(entity) || CobbleUtil.isBoss(entity) || CobbleUtil.isPokestop(entity)) return false
+        if (target.uuid == entity.uuid) return false
+        if (target.uuid == entity.uuid) return false
+
+        if (target is TamableAnimal && target.ownerUUID == entity.uuid) return false
+        if (target is Player && (target.isCreative || target.isSpectator)) return false
+
+        return true
+    }
+
+
 }

@@ -23,8 +23,8 @@ class BugMove(
     override fun renderParticleOnAttack(projectile: Projectile) {
         if(projectile.owner == null) return
 
-        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.BUGFIRE)
-        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.BUGFIRETRAIL)
+        CobbleUtil.summonEntityParticles(projectile.owner!!, CobbleUtil.BUGFIRE)
+        CobbleUtil.summonEntityParticles(projectile.owner!!, CobbleUtil.BUGFIRETRAIL)
     }
 
     override fun renderParticleOnHit(target: LivingEntity) {

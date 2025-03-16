@@ -23,8 +23,8 @@ class GroundMove(
     override fun renderParticleOnAttack(projectile: Projectile) {
         if(projectile.owner == null) return
 
-        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.SANDATTACK)
-        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.SANDATTACK_RESIDUAL)
+        CobbleUtil.summonEntityParticles(projectile.owner!!, CobbleUtil.SANDATTACK)
+        CobbleUtil.summonEntityParticles(projectile.owner!!, CobbleUtil.SANDATTACK_RESIDUAL)
     }
 
     override fun renderParticleOnHit(target: LivingEntity) {

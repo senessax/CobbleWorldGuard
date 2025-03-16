@@ -8,6 +8,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.util.CobbleUtil
 import dev.zanckor.cobbleguard.util.Timer
+import dev.zanckor.cobbleguard.wrapper.ClaimApiWrapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -19,10 +20,11 @@ import net.tslat.smartbrainlib.api.core.behaviour.ExtendedBehaviour
 /**
  * Base class for Pokemon AI tasks implementing common behavior patterns
  */
+@Suppress("SENSELESS_COMPARISON")
 abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
     companion object {
         private const val MIN_MOVEMENT_SPEED = 1.0
-        private const val MAX_MOVEMENT_SPEED = 2.5
+        private const val MAX_MOVEMENT_SPEED = 2.0
 
         private const val ATTACK_COOLDOWN = 3.0
         private const val ANIMATION_COOLDOWN = 3.0
@@ -50,6 +52,10 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
         targetPos: BlockPos,
         minDistance: Double
     ): Boolean {
+        if (!Timer.hasReached("${entity.stringUUID}_travel", 0.25) || entity.isBattling) {
+            return false
+        }
+
         val distanceToTarget = entity.distanceToSqr(targetPos.center)
         val currentNavTarget = entity.navigation.targetPos
 
@@ -77,16 +83,18 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
             return
         }
 
-        val hostilemon = pokemon as? Hostilemon ?: return
-        val distanceToTarget = pokemon.distanceToSqr(target)
-        CobbleUtil.lookAt(pokemon, target)
+        if (ClaimApiWrapper.canAttack(pokemon, target)) {
+            val hostilemon = pokemon as? Hostilemon ?: return
+            val distanceToTarget = pokemon.distanceToSqr(target)
+            CobbleUtil.lookAt(pokemon, target)
 
-        when {
-            distanceToTarget > (MELEE_RANGE * 2) -> executeRangedAttack(pokemon, hostilemon, target)
-            else -> executeMeleeAttack(pokemon, hostilemon, target)
+            when {
+                distanceToTarget > (MELEE_RANGE * 2) -> executeRangedAttack(pokemon, hostilemon, target)
+                else -> executeMeleeAttack(pokemon, hostilemon, target)
+            }
+
+            Timer.start("${pokemon.stringUUID}_attack_cooldown", ATTACK_COOLDOWN)
         }
-
-        Timer.start("${pokemon.stringUUID}_attack_cooldown", ATTACK_COOLDOWN)
     }
 
     /**
@@ -129,10 +137,8 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
         hostilemon: Hostilemon,
         target: LivingEntity
     ) {
-        @Suppress("SENSELESS_COMPARISON")
         if(pokemon == null) return
-
-        val move = hostilemon.getBestMoveAgainst(target)
+        val move = hostilemon.getBestMoveAgainst(target) ?: return
 
         CoroutineScope(Dispatchers.IO).launch {
             delay(RANGED_ATTACK_DELAY)
@@ -157,7 +163,7 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
         hostilemon: Hostilemon,
         target: LivingEntity
     ) {
-        val move = hostilemon.getBestMoveAgainst(target)
+        val move = hostilemon.getBestMoveAgainst(target) ?: return
         val pokemonType = pokemon.pokemon.primaryType
 
         CoroutineScope(Dispatchers.IO).launch {

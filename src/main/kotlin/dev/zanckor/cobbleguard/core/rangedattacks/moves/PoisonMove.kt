@@ -19,12 +19,11 @@ class PoisonMove(
 
     override fun applyEffect(owner: PokemonEntity, target: LivingEntity) {
         target.hurt(target.damageSources().generic(), damage.toFloat())
-        target.addEffect(MobEffectInstance(MobEffects.POISON, 30, 2))
     }
 
     override fun renderParticleOnAttack(projectile: Projectile) {
         if(projectile.owner == null) return
 
-        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.POISONPOWDER)
+        CobbleUtil.summonEntityParticles(projectile.owner!!, CobbleUtil.POISONPOWDER)
     }
 }

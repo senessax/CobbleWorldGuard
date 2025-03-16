@@ -4,6 +4,7 @@ import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import dev.zanckor.cobbleguard.core.rangedattacks.AttackMove
 import dev.zanckor.cobbleguard.util.CobbleUtil
+import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.projectile.Projectile
 
@@ -23,7 +24,8 @@ class FireMove(
     override fun renderParticleOnAttack(projectile: Projectile) {
         if(projectile.owner == null) return
 
-        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.FLAMETHROWER)
+        CobbleUtil.summonEntityParticles(projectile.owner!!, CobbleUtil.FLAMETHROWER)
+        projectile.owner!!.sendSystemMessage(Component.literal("test"))
     }
 
     override fun renderParticleOnHit(target: LivingEntity) {

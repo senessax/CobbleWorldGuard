@@ -4,10 +4,12 @@
   "package": "dev.zanckor.cobbleguard.mixin.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "PokemonFollowOwnerGoalMixin",
     "PokemonMixin",
-    "ProjectileMixin",
-    "LivingEntityMixin"
+    "LivingEntityMixin",
+    "projectile.SmallFireballMixin",
+    "projectile.WindChargeMixin",
+    "projectile.WitherSkullMixin",
+    "projectile.SnowballMixin",
   ],
   "injectors": {
     "defaultRequire": 1

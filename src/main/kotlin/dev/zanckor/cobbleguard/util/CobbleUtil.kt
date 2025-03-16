@@ -1,5 +1,6 @@
 package dev.zanckor.cobbleguard.util
 
+import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.CobblemonNetwork.sendPacket
 import com.cobblemon.mod.common.CobblemonSounds
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
@@ -8,6 +9,11 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.net.messages.client.animation.PlayPosableAnimationPacket
 import com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormEntityParticlePacket
 import com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormParticlePacket
+import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
+import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_WILD_POKEMON_TARGET
+import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
+import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity.AGGRESIVE
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
@@ -17,6 +23,7 @@ import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.level.Level
 import net.minecraft.world.phys.Vec3
+import net.tslat.smartbrainlib.util.BrainUtils
 import kotlin.math.atan2
 import kotlin.math.max
 
@@ -63,12 +70,17 @@ object CobbleUtil {
      * @see calculateCombatStats
      */
     fun mustRunAway(pokemonEntity: PokemonEntity, attackerEntity: LivingEntity): Boolean {
-        return if(attackerEntity is PokemonEntity) {
+        val aggresivity = (pokemonEntity as Hostilemon).aggressivity
+
+        return if (aggresivity == AGGRESIVE) {
+            false
+        } else if (attackerEntity is PokemonEntity) {
             mustRunAwayPokemon(pokemonEntity, attackerEntity)
         } else {
             attackerEntity.health > pokemonEntity.pokemon.currentHealth
         }
     }
+
 
     /**
      * Determines if a Pokemon must run away from another Pokemon if attacked
@@ -81,7 +93,7 @@ object CobbleUtil {
         val pokemonCombatStats = calculateCombatStats(pokemonEntity)
         val pokemonDefenseStats = calculateDefenseStats(pokemonEntity)
 
-        if(attackerCombatStats > pokemonCombatStats) {
+        if (attackerCombatStats > pokemonCombatStats) {
             val mustTryToCombat = attackerCombatStats - pokemonCombatStats > pokemonDefenseStats
 
             return !mustTryToCombat
@@ -99,7 +111,7 @@ object CobbleUtil {
         val combatStats = setOf(Stats.ATTACK, Stats.SPECIAL_ATTACK)
         var pokemonCombatStats = 0
 
-        for(stat in combatStats) {
+        for (stat in combatStats) {
             pokemonCombatStats += pokemonEntity.pokemon.getStat(stat)
         }
 
@@ -115,7 +127,7 @@ object CobbleUtil {
         val defenseStats = setOf(Stats.HP, Stats.DEFENCE, Stats.SPECIAL_DEFENCE)
         var pokemonDefenseStats = 0
 
-        for(stat in defenseStats) {
+        for (stat in defenseStats) {
             pokemonDefenseStats += pokemonEntity.pokemon.getStat(stat)
         }
 
@@ -127,31 +139,41 @@ object CobbleUtil {
      * @param entity The entity at where the particle will be summoned
      * @param particle The particle to be sent
      */
-    private fun sendBedrockEntityParticle(entity: Entity, particle: ResourceLocation) {
+    private fun sendBedrockEntityParticle(
+        entity: Entity,
+        particle: ResourceLocation,
+        locator: List<String> = listOf("target")
+    ) {
         val nearbyPlayers = entity.level().players().filter { it.distanceTo(entity) < 1000 }
 
         nearbyPlayers.forEach {
-            (it as ServerPlayer).sendPacket(
-                SpawnSnowstormEntityParticlePacket(
-                    particle,
-                    entity.id,
-                    listOf("target"))
-            )
+            if (it is ServerPlayer) {
+                it.sendPacket(
+                    SpawnSnowstormEntityParticlePacket(
+                        particle,
+                        entity.id,
+                        locator
+                    )
+                )
+            }
         }
     }
 
 
-
     private fun sendBedrockParticle(livingEntity: LivingEntity, particle: ResourceLocation) {
         val nearbyPlayers = livingEntity.level().players().filter { it.distanceTo(livingEntity) < 1000 }
-        val lastAttackerHeight = livingEntity.lastHurtByMob?.bbHeight?.div(2)?.let { max(it, livingEntity.bbHeight) } ?: livingEntity.eyeHeight
+        val lastAttackerHeight = livingEntity.lastHurtByMob?.bbHeight?.div(2)?.let { max(it, livingEntity.bbHeight) }
+            ?: livingEntity.eyeHeight
 
         nearbyPlayers.forEach {
-            (it as ServerPlayer).sendPacket(
-                SpawnSnowstormParticlePacket(
-                    particle,
-                    livingEntity.position().add(0.0, lastAttackerHeight.toDouble(), 0.0),)
-            )
+            if (it is ServerPlayer) {
+                it.sendPacket(
+                    SpawnSnowstormParticlePacket(
+                        particle,
+                        livingEntity.position().add(0.0, lastAttackerHeight.toDouble(), 0.0),
+                    )
+                )
+            }
         }
     }
 
@@ -159,11 +181,14 @@ object CobbleUtil {
         val nearbyPlayers = level.players().filter { it.distanceToSqr(pos) < 1000 }
 
         nearbyPlayers.forEach {
-            (it as ServerPlayer).sendPacket(
-                SpawnSnowstormParticlePacket(
-                    particle,
-                    pos)
-            )
+            if (it is ServerPlayer) {
+                it.sendPacket(
+                    SpawnSnowstormParticlePacket(
+                        particle,
+                        pos
+                    )
+                )
+            }
         }
     }
 
@@ -241,15 +266,51 @@ object CobbleUtil {
     }
 
     /**
-     * Summons ranged particles at the entity's position
+     * Summons particles at the entity's position
      * @param entity The Pokemon entity that is attacking
      * @param resourceLocation The resource location of the particle
      * @see sendBedrockEntityParticle
      */
-    fun summonRangedParticles(
+    fun summonEntityParticles(
         entity: Entity,
-        resourceLocation: ResourceLocation
+        resourceLocation: ResourceLocation,
+        locator: List<String> = listOf("target")
     ) {
-        sendBedrockEntityParticle(entity, resourceLocation)
+        sendBedrockEntityParticle(entity, resourceLocation, locator)
+    }
+
+    fun removeAllTargets(player: ServerPlayer) {
+        Cobblemon.storage.getParty(player).forEach {
+            it.entity?.let { entity ->
+                entity.target = null
+                BrainUtils.clearMemory(entity, NEAREST_OWNER_TARGET)
+            }
+        }
+    }
+
+    fun isBoss(entity: Entity): Boolean {
+        return entity.name.string.contains("Boss") ||
+                entity.customName?.string?.contains("Boss") == true ||
+                entity.displayName?.string?.contains("Boss") == true
+    }
+
+    fun isPlushie(entity: Entity): Boolean {
+        try {
+            val entityData = CompoundTag()
+            entity.save(entityData)
+
+            return entityData.contains("plushie")
+        } catch (e: IllegalStateException) {
+            return true
+        }
+
+        return false
+    }
+
+    fun isPokestop(entity: Entity): Boolean {
+        val entityData = CompoundTag()
+        entity.save(entityData)
+
+        return entityData.contains("pokestop") || entityData.contains("type_pokestop")
     }
 }

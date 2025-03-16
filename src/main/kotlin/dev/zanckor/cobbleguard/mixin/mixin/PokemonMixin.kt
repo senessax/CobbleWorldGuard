@@ -48,11 +48,16 @@ import net.tslat.smartbrainlib.api.core.BrainActivityGroup
 import net.tslat.smartbrainlib.api.core.SmartBrainProvider
 import net.tslat.smartbrainlib.api.core.behaviour.AllApplicableBehaviours
 import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
+import org.spongepowered.asm.mixin.Debug
 import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.Shadow
+import org.spongepowered.asm.mixin.injection.At
+import org.spongepowered.asm.mixin.injection.Inject
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 import java.util.*
 
 @Mixin(PokemonEntity::class)
+@Debug(export = true, print = true)
 class PokemonMixin(
     entityType: EntityType<out PathfinderMob>, level: Level,
     override var isHostile: Boolean,
@@ -62,8 +67,8 @@ class PokemonMixin(
     Hostilemon,
     SmartBrainOwner<PokemonMixin> {
 
-    @Shadow
-    val pokemon: Pokemon? = null
+    @Shadow(remap = false)
+    lateinit var pokemon: Pokemon
 
     private var hostilemonAttacker: PokemonEntity? = null
 
@@ -78,16 +83,18 @@ class PokemonMixin(
      * @return The most suitable move from the Pokémon's moveset
      */
     override fun getBestMoveAgainst(target: LivingEntity?): Move? {
+        if(pokemon.moveSet.toList().isEmpty()) return null
+
         val isPokemon = target is PokemonEntity
 
         if (isPokemon) {
             val pokemonTarget = (target as PokemonEntity).pokemon
-            val moves = mapMoves(pokemon!!.moveSet, pokemonTarget)
+            val moves = mapMoves(pokemon.moveSet, pokemonTarget)
                 .sortedWith { move1, move2 -> compareMoves(move1, move2) }
 
             return moves.last().first
         } else {
-            return pokemon!!.moveSet[random.nextIntBetweenInclusive(0, pokemon.moveSet.count() - 1)]
+            return pokemon.moveSet[random.nextIntBetweenInclusive(0, pokemon.moveSet.count() - 1)]
         }
     }
 
@@ -101,13 +108,16 @@ class PokemonMixin(
      * @param target The target entity receiving the attack
      */
     override fun usePhysicalMove(move: Move?, target: LivingEntity?) {
-        if (move != null && target != null && pokemon != null) {
-            updateTargetBehavior(target)
-            applyDamageToTarget(target, calculateMoveDamage(move, target))
-
-            CobbleUtil.summonHitParticles(target, CobbleUtil.HIT)
-            CobbleUtil.summonHitParticles(target, CobbleUtil.TYPE_HIT(pokemon.primaryType))
+        if (move == null || target == null) {
+            println("CobbleGuard Error: Invalid parameters in useRangedMove. Move: $move, Target: $target, Pokemon: $pokemon")
+            return
         }
+
+        updateTargetBehavior(target)
+        applyDamageToTarget(target, calculateMoveDamage(move, target))
+
+        CobbleUtil.summonHitParticles(target, CobbleUtil.HIT)
+        CobbleUtil.summonHitParticles(target, CobbleUtil.TYPE_HIT(pokemon.primaryType))
     }
 
     /**
@@ -119,7 +129,7 @@ class PokemonMixin(
      * @see usePhysicalMove
      */
     override fun useRangedMove(move: Move?, target: LivingEntity?) {
-        if (move == null || target == null || pokemon == null) {
+        if (move == null || target == null) {
             println("CobbleGuard Error: Invalid parameters in useRangedMove. Move: $move, Target: $target, Pokemon: $pokemon")
             return
         }
@@ -129,7 +139,14 @@ class PokemonMixin(
 
         val projectile: Projectile = when (moveType) {
             ElementalTypes.FIRE -> SmallFireball(level(), this, Vec3.ZERO)
-            ElementalTypes.ICE, ElementalTypes.WATER, ElementalTypes.BUG, ElementalTypes.GRASS, ElementalTypes.ROCK, ElementalTypes.STEEL, ElementalTypes.GROUND -> WindCharge(level(), x, y, z, Vec3.ZERO)
+            ElementalTypes.ICE, ElementalTypes.WATER, ElementalTypes.BUG, ElementalTypes.GRASS, ElementalTypes.ROCK, ElementalTypes.STEEL, ElementalTypes.GROUND -> WindCharge(
+                level(),
+                x,
+                y,
+                z,
+                Vec3.ZERO
+            )
+
             ElementalTypes.POISON -> WitherSkull(level(), this, Vec3.ZERO)
             ElementalTypes.ELECTRIC -> {
                 val chance = random.nextInt(0, 100)
@@ -137,6 +154,7 @@ class PokemonMixin(
 
                 Snowball(level(), target.x, target.y + 25, target.z)
             }
+
             else -> {
                 return
             }
@@ -155,7 +173,7 @@ class PokemonMixin(
         // Configure and launch the projectile
         projectile.setMove(attackMove)
         projectile.setMoveDamage(calculateMoveDamage(move, target))
-        projectile.setOwner(this)
+        projectile.setOwner(pokemon.entity)
 
         val speed = projectile.getMove()?.speed ?: run {
             return@run 1F
@@ -172,7 +190,7 @@ class PokemonMixin(
      * @see useRangedMove
      */
     private fun shootProjectile(projectile: Projectile, speed: Float, target: LivingEntity?) {
-        val direction = target!!.position().subtract(projectile.position()).normalize()
+        val direction = target?.position()?.subtract(projectile.position())?.normalize() ?: return
 
         projectile.shoot(
             direction.x, direction.y, direction.z,
@@ -180,9 +198,12 @@ class PokemonMixin(
             1.0F
         )
 
-        level().addFreshEntity(projectile)
+        if (!level().isClientSide) {
+            level().server?.execute {
+                level().addFreshEntity(projectile)
+            }
+        }
     }
-
 
     private fun calculateMoveDamage(move: Move?, target: LivingEntity): Double {
         if (move == null) return 20.0
@@ -216,7 +237,7 @@ class PokemonMixin(
      * @return Calculated damage amount
      */
     private fun calculateDamage(basePower: Double, effectiveness: Double): Double {
-        val pokemonLevel = pokemon?.level ?: 1
+        val pokemonLevel = pokemon.level
         return (basePower * effectiveness) * (pokemonLevel / 100.0) * 0.4
     }
 
@@ -227,13 +248,13 @@ class PokemonMixin(
      * @param damage Amount of damage to be applied
      */
     private fun applyDamageToTarget(target: LivingEntity, damage: Double) {
-        if(pokemon?.entity == null) return
+        if (pokemon.entity == null) return
 
         target.hurt(damageSources().mobAttack(pokemon.entity!!), damage.toFloat())
         target.knockback(0.5, position().x - target.position().x, position().z - target.position().z)
 
-        if(target.isDeadOrDying) {
-            CobbleUtil.summonHitParticles(pokemon.entity!!, CobbleUtil.WIN_FIGHT)
+        if (target.isDeadOrDying) {
+            CobbleUtil.summonEntityParticles(pokemon.entity!!, CobbleUtil.WIN_FIGHT, listOf("root"))
         }
     }
 
@@ -245,16 +266,18 @@ class PokemonMixin(
      * @see hurt
      */
     override fun hurt(damageSource: DamageSource, f: Float): Boolean {
-        val defense = pokemon!!.getStat(Stats.DEFENCE).toFloat() / 300.0
+        if(pokemon.entity == null) return false
+
+        val defense = pokemon.getStat(Stats.DEFENCE).toFloat() / 300.0
         val damage = f * (1 - defense)
         val result = super.hurt(damageSource, damage.toFloat())
 
-        pokemon.currentHealth -= damage.toInt()
+        pokemon.currentHealth = maxOf(0, pokemon.currentHealth - damage.toInt()) // Evitar valores negativos
 
-        if(pokemon.currentHealth <= 0) {
-            super.hurt(damageSource, Float.MAX_VALUE) // Ensure pokemon dies
-        } else {
-            pokemon.entity!!.health = pokemon.currentHealth.toFloat() // Sets the health of the pokemon entity
+        if (pokemon.currentHealth <= 0) {
+            return super.hurt(damageSource, Float.MAX_VALUE) // Ensure pokemon dies
+        } else if (pokemon.entity != null) {
+            pokemon.entity!!.health = pokemon.currentHealth.toFloat()
         }
 
         return result
@@ -333,7 +356,7 @@ class PokemonMixin(
         val attackerBattle = BattlePokemon.safeCopyOf(attacker)
         attackerBattle.actor = PokemonBattleActor(UUID.randomUUID(), attackerBattle, 10F, RandomBattleAI())
 
-        val pokemonBattle = BattlePokemon.safeCopyOf(this.pokemon!!)
+        val pokemonBattle = BattlePokemon.safeCopyOf(pokemon)
         pokemonBattle.actor = PokemonBattleActor(UUID.randomUUID(), pokemonBattle, 10F, RandomBattleAI())
 
         val experienceResult = StandardExperienceCalculator.calculate(attackerBattle, pokemonBattle, 1.0)
@@ -354,10 +377,11 @@ class PokemonMixin(
      */
     @Suppress("SENSELESS_COMPARISON")
     override fun interactAt(player: Player, vec3: Vec3, interactionHand: InteractionHand): InteractionResult {
-        if (pokemon?.getOwnerUUID() != player.uuid) return InteractionResult.FAIL
-        if (aggressivity == null) Aggresivity.DEFENSIVE
+        if (pokemon.getOwnerUUID() != player.uuid) return InteractionResult.FAIL
+        if (aggressivity == null) aggressivity = Aggresivity.DEFENSIVE
 
         if (!player.isShiftKeyDown && interactionHand == InteractionHand.MAIN_HAND) {
+
             aggressivity = aggressivity.next()
             player.sendSystemMessage(Component.literal(aggressivity.message))
         }
@@ -381,7 +405,7 @@ class PokemonMixin(
      * Applies knockback to the entity with a power based on Pokémon attack stat
      */
     override fun knockback(d: Double, e: Double, f: Double) {
-        val power = pokemon!!.attack.toFloat() / 75.0
+        val power = pokemon.attack.toFloat() / 75.0
 
         super.knockback(d * power, e * power, f * power)
     }
@@ -397,14 +421,14 @@ class PokemonMixin(
                 DefendOwnerTask()
                     .startCondition { entity ->
                         entity!!.brain.getMemory(NEAREST_OWNER_TARGET).isPresent && Timer.hasReached(
-                            "${getUUID()}_task_cooldown", 1.0
+                            "${getUUID()}_defend_task_cooldown", 0.5
                         )
                     },
 
                 WildBehaviourTask()
                     .startCondition { entity ->
                         entity!!.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).isPresent && Timer.hasReached(
-                            "${getUUID()}_task_cooldown", 1.0
+                            "${getUUID()}_wild_task_cooldown", 0.5
                         )
                     }
             )

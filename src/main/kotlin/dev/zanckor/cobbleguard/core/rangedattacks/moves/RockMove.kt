@@ -23,7 +23,7 @@ class RockMove(
     override fun renderParticleOnAttack(projectile: Projectile) {
         if(projectile.owner == null) return
 
-        CobbleUtil.summonRangedParticles(projectile.owner!!, CobbleUtil.ROCK)
+        CobbleUtil.summonEntityParticles(projectile.owner!!, CobbleUtil.ROCK)
     }
 
     override fun renderParticleOnHit(target: LivingEntity) {

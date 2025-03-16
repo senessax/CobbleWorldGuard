@@ -3,6 +3,7 @@ package dev.zanckor.cobbleguard
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonSensors
 import dev.zanckor.cobbleguard.core.command.CommandRegistry
+import dev.zanckor.cobbleguard.listener.CapturePokemonListener
 import dev.zanckor.cobbleguard.listener.RemoteTargetListener
 import net.fabricmc.api.ModInitializer
 
@@ -13,6 +14,7 @@ class CobbleGuard : ModInitializer {
         PokemonMemoryModuleType.init()
 
         RemoteTargetListener.init()
+        CapturePokemonListener.init()
         CommandRegistry.init()
     }
 

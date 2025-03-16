@@ -13,7 +13,8 @@ public class FlanClaim implements IClaimWrapper {
     @Override
     public boolean canWorkOnClaim(PokemonEntity entity, LivingEntity target, ServerLevel level) {
         Claim claim = ClaimStorage.get(level).getClaimAt(target.getOnPos());
+        ResourceLocation permission = BuiltinPermission.BREAK;
 
-        return claim == null || claim.canAttackEntity(target);
+        return claim == null || claim.canInteract(entity.getPokemon().getOwnerPlayer(), permission, target.getOnPos());
     }
 }

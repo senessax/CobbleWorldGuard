@@ -5,14 +5,9 @@ import com.griefdefender.api.GriefDefender;
 import com.griefdefender.api.User;
 import com.griefdefender.api.claim.Claim;
 import com.griefdefender.util.Location;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Items;
-
-import java.util.HashMap;
-import java.util.UUID;
 
 public class GriefDefenderClaim implements IClaimWrapper {
 
@@ -24,13 +19,13 @@ public class GriefDefenderClaim implements IClaimWrapper {
         User user = player != null ? GriefDefender.getCore().getUser(player.getUUID()) : null;
 
         if (user != null) {
-            return canAttack(entity, entity.getTarget(), griefClaim, user);
+            return canAttack(entity, entity.getTarget(), griefClaim, location, user);
         }
 
         return true;
     }
 
-    private boolean canAttack(LivingEntity source, LivingEntity target, Claim griefClaim, User user) {
-        return griefClaim == null || griefClaim.isWilderness() || griefClaim.canHurtEntity(source, Items.AIR.getDefaultInstance(), target, user);
+    private boolean canAttack(LivingEntity source, LivingEntity target, Claim griefClaim, Location location, User user) {
+        return griefClaim == null || griefClaim.isWilderness() || griefClaim.canBreak(source, location, user);
     }
 }

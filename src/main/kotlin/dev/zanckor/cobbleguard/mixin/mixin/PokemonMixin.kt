@@ -14,6 +14,7 @@ import com.cobblemon.mod.common.battles.pokemon.BattlePokemon
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.pokemon.Pokemon
 import dev.zanckor.cobbleguard.CobbleGuard.Companion.MODID
+import dev.zanckor.cobbleguard.config.SimpleConfig
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_WILD_POKEMON_TARGET
 import dev.zanckor.cobbleguard.core.brain.sensor.NearestOwnerTargetSensor
@@ -51,11 +52,11 @@ import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
 import org.spongepowered.asm.mixin.Debug
 import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.Shadow
+import org.spongepowered.asm.mixin.Unique
 import org.spongepowered.asm.mixin.injection.At
 import org.spongepowered.asm.mixin.injection.Inject
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 import java.util.*
-
 @Mixin(PokemonEntity::class)
 @Debug(export = true, print = true)
 class PokemonMixin(
@@ -88,7 +89,7 @@ class PokemonMixin(
         val isPokemon = target is PokemonEntity
 
         if (isPokemon) {
-            val pokemonTarget = (target as PokemonEntity).pokemon
+            val pokemonTarget = target.pokemon
             val moves = mapMoves(pokemon.moveSet, pokemonTarget)
                 .sortedWith { move1, move2 -> compareMoves(move1, move2) }
 
@@ -225,7 +226,7 @@ class PokemonMixin(
         return if (target is PokemonEntity) {
             getMoveEffectiveness(move, target.pokemon.primaryType)
         } else {
-            1.0 // Standard effectiveness for non-Pokémon entities
+            SimpleConfig.damageMultiplier // Standard effectiveness for non-Pokémon entities
         }
     }
 

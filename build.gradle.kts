@@ -63,14 +63,15 @@ dependencies {
     modImplementation("curse.maven:forgeconfigapiport-${project.property("forgeconfigapiport_cf_id")}:${project.property("forgeconfigapiport_cf_version")}")
 
     // GriefDefender
-    modImplementation("luckperms:luckperms")
-    modImplementation("fabric-permissions-api-v0:fabric-permissions-api")
-    modImplementation("griefdefender:griefdefender")
+    //modImplementation("luckperms:luckperms")
+    //modImplementation("fabric-permissions-api-v0:fabric-permissions-api")
+    //modImplementation("griefdefender:griefdefender")
 
     // GriefDefender Apis
     implementation("com.electronwill.night-config:core:3.8.1")
     implementation("com.electronwill.night-config:toml:3.8.1")
     implementation("com.electronwill.night-config:json:3.8.1")
+    implementation(kotlin("stdlib-jdk8"))
 }
 
 tasks.processResources {
@@ -120,4 +121,7 @@ publishing {
         // The repositories here will be used for publishing your artifact, not for
         // retrieving dependencies.
     }
+}
+kotlin {
+    jvmToolchain(21)
 }

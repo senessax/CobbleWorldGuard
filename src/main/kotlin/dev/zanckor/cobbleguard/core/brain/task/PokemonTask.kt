@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.LivingEntity
 import net.tslat.smartbrainlib.api.core.behaviour.ExtendedBehaviour
@@ -142,8 +143,11 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
 
         CoroutineScope(Dispatchers.IO).launch {
             delay(RANGED_ATTACK_DELAY)
-            hostilemon.useRangedMove(move, target)
-            playMoveSound(move, pokemon, target)
+
+            withContext(Dispatchers.Main) {
+                hostilemon.useRangedMove(move, target)
+                playMoveSound(move, pokemon, target)
+            }
         }
 
         if (Timer.hasReached("${pokemon.stringUUID}_attack_animation_cooldown", ANIMATION_COOLDOWN)) {
@@ -166,11 +170,14 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
         val move = hostilemon.getBestMoveAgainst(target) ?: return
         val pokemonType = pokemon.pokemon.primaryType
 
+
         CoroutineScope(Dispatchers.IO).launch {
             delay(MELEE_ANIMATION_DELAY)
 
-            playImpactSound(pokemon, pokemonType)
-            hostilemon.usePhysicalMove(move, target)
+            withContext(Dispatchers.Main) {
+                playImpactSound(pokemon, pokemonType)
+                hostilemon.usePhysicalMove(move, target)
+            }
         }
 
         if (Timer.hasReached("${pokemon.stringUUID}_attack_animation_cooldown", ANIMATION_COOLDOWN)) {

@@ -49,7 +49,7 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
             return target
         }
 
-        return if(pokemonEntity.lastAttacker == null) getNewTarget(pokemonEntity) else pokemonEntity.lastAttacker
+        return pokemonEntity.lastAttacker ?: getNewTarget(pokemonEntity)
     }
 
     private fun getNewTarget(pokemonEntity: PokemonEntity): LivingEntity? {
@@ -136,11 +136,11 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
         return nearbyEntity.minByOrNull { entity.distanceToSqr(it) } as? LivingEntity
     }
 
-    private fun canAttack(entity: LivingEntity, target: Entity): Boolean {
+    private fun canAttack(entity: PokemonEntity, target: Entity): Boolean {
         if (CobbleUtil.isPlushie(target) || CobbleUtil.isBoss(target) || CobbleUtil.isPokestop(target)) return false
         if (CobbleUtil.isPlushie(entity) || CobbleUtil.isBoss(entity) || CobbleUtil.isPokestop(entity)) return false
         if (target.uuid == entity.uuid) return false
-        if (target.uuid == entity.uuid) return false
+        if (target.uuid == entity.pokemon.getOwnerUUID()) return false
 
         if (target is TamableAnimal && target.ownerUUID == entity.uuid) return false
         if (target is Player && (target.isCreative || target.isSpectator)) return false

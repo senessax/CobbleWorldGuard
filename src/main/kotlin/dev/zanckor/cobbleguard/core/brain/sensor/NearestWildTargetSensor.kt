@@ -2,6 +2,7 @@ package dev.zanckor.cobbleguard.core.brain.sensor
 
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import dev.zanckor.cobbleguard.config.SimpleConfig
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_WILD_POKEMON_TARGET
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonSensors
@@ -53,13 +54,13 @@ class NearestWildTargetSensor : ExtendedSensor<LivingEntity>() {
             return target
         }
 
-        return if(pokemonEntity.lastAttacker == null) getNewTarget(pokemonEntity) else pokemonEntity.lastAttacker
+        return pokemonEntity.lastAttacker ?: getNewTarget(pokemonEntity)
     }
 
     private fun getNewTarget(pokemonEntity: PokemonEntity): LivingEntity? {
         val aggresivity = assignAggresivity(pokemonEntity)
 
-        if(aggresivity == AGGRESIVE) {
+        if (aggresivity == AGGRESIVE) {
             return getAggressiveTarget(pokemonEntity)
         }
 
@@ -67,7 +68,7 @@ class NearestWildTargetSensor : ExtendedSensor<LivingEntity>() {
     }
 
     private fun getAggressiveTarget(entity: PokemonEntity): LivingEntity? {
-        if(entity.lastAttacker != null && entity.lastAttacker!!.isAlive) return entity.lastAttacker
+        if (entity.lastAttacker != null && entity.lastAttacker!!.isAlive) return entity.lastAttacker
 
         val level = entity.level()
         val nearbyEntity = level.getEntities(entity, entity.boundingBox.inflate(15.0)) { target ->
@@ -79,7 +80,18 @@ class NearestWildTargetSensor : ExtendedSensor<LivingEntity>() {
 
     private fun assignAggresivity(pokemonEntity: PokemonEntity): Hostilemon.Aggresivity {
         val attackStat = pokemonEntity.pokemon.getStat(Stats.ATTACK)
-        if ((pokemonEntity as Hostilemon).aggressivity == null) pokemonEntity.aggressivity = if(attackStat > 150) AGGRESIVE else DEFENSIVE
+
+        if ((pokemonEntity as Hostilemon).aggressivity == null) {
+            val isPassiveConfig = SimpleConfig.isWildPokesPassive
+            val isAggresiveByStat = attackStat > 150
+
+            pokemonEntity.aggressivity =
+                if (!isPassiveConfig && isAggresiveByStat) {
+                    AGGRESIVE
+                } else {
+                    DEFENSIVE
+                }
+        }
 
         return pokemonEntity.aggressivity
     }

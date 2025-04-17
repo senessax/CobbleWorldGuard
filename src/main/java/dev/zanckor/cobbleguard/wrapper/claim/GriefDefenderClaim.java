@@ -1,5 +1,6 @@
 package dev.zanckor.cobbleguard.wrapper.claim;
 
+/*
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.griefdefender.api.GriefDefender;
 import com.griefdefender.api.User;
@@ -28,4 +29,4 @@ public class GriefDefenderClaim implements IClaimWrapper {
     private boolean canAttack(LivingEntity source, LivingEntity target, Claim griefClaim, Location location, User user) {
         return griefClaim == null || griefClaim.isWilderness() || griefClaim.canBreak(source, location, user);
     }
-}
+}*/

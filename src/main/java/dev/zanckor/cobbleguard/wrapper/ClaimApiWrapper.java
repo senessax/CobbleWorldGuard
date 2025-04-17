@@ -2,7 +2,6 @@ package dev.zanckor.cobbleguard.wrapper;
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import dev.zanckor.cobbleguard.wrapper.claim.FlanClaim;
-import dev.zanckor.cobbleguard.wrapper.claim.GriefDefenderClaim;
 import dev.zanckor.cobbleguard.wrapper.claim.OpacClaim;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.level.ServerLevel;
@@ -21,7 +20,7 @@ public class ClaimApiWrapper {
         boolean hasOpenParties = FabricLoader.getInstance().isModLoaded("openpartiesandclaims");
         boolean hasGD = FabricLoader.getInstance().isModLoaded("griefdefender");
 
-        if (hasGD) return new GriefDefenderClaim().canWorkOnClaim(entity, target, (ServerLevel) level);
+        //if (hasGD) return new GriefDefenderClaim().canWorkOnClaim(entity, target, (ServerLevel) level);
         if (hasOpenParties) return new OpacClaim().canWorkOnClaim(entity, target, (ServerLevel) level);
         if (hasFlan) return new FlanClaim().canWorkOnClaim(entity, target, (ServerLevel) level);
 

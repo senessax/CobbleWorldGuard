@@ -56,6 +56,7 @@ dependencies {
             "-${project.property("minecraft_version")}" +
             ":${project.property("sbl_version")}")
     modImplementation("com.cobblemon:fabric:${project.property("cobblemon_version")}")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
 
     // Claim API
     modImplementation("curse.maven:FLan-${project.property("flan_cf_id")}:${project.property("flan_cf_version")}")

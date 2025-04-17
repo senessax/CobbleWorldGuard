@@ -5,6 +5,7 @@ import com.cobblemon.mod.common.api.moves.Move
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
+import com.cobblemon.mod.common.util.server
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.util.CobbleUtil
 import dev.zanckor.cobbleguard.util.Timer
@@ -80,7 +81,11 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
      * @param target The target entity
      */
     protected fun attack(pokemon: PokemonEntity, target: LivingEntity) {
-        if (!Timer.hasReached("${pokemon.stringUUID}_attack_cooldown", ATTACK_COOLDOWN) || pokemon.isBattling || (target is PokemonEntity && target.isBattling) || pokemon.isBusy) {
+        if (!Timer.hasReached(
+                "${pokemon.stringUUID}_attack_cooldown",
+                ATTACK_COOLDOWN
+            ) || pokemon.isBattling || (target is PokemonEntity && target.isBattling) || pokemon.isBusy
+        ) {
             return
         }
 
@@ -138,13 +143,13 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
         hostilemon: Hostilemon,
         target: LivingEntity
     ) {
-        if(pokemon == null) return
+        if (pokemon == null) return
         val move = hostilemon.getBestMoveAgainst(target) ?: return
 
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             delay(RANGED_ATTACK_DELAY)
 
-            withContext(Dispatchers.Main) {
+            server()?.execute {
                 hostilemon.useRangedMove(move, target)
                 playMoveSound(move, pokemon, target)
             }
@@ -171,14 +176,15 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
         val pokemonType = pokemon.pokemon.primaryType
 
 
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             delay(MELEE_ANIMATION_DELAY)
 
-            withContext(Dispatchers.Main) {
+            server()?.execute {
                 playImpactSound(pokemon, pokemonType)
                 hostilemon.usePhysicalMove(move, target)
             }
         }
+
 
         if (Timer.hasReached("${pokemon.stringUUID}_attack_animation_cooldown", ANIMATION_COOLDOWN)) {
             CobbleUtil.playAnimation(pokemon, PHYSICAL_ANIMATION)
@@ -195,7 +201,8 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
     }
 
     private fun playImpactSound(pokemon: PokemonEntity, pokemonType: ElementalType) {
-        val impactSound = CobbleUtil.getSoundByName("impact.${pokemonType.name.lowercase()}") ?: CobblemonSounds.IMPACT_NORMAL
+        val impactSound =
+            CobbleUtil.getSoundByName("impact.${pokemonType.name.lowercase()}") ?: CobblemonSounds.IMPACT_NORMAL
 
         pokemon.level().playSound(null, pokemon.blockPosition(), impactSound, pokemon.soundSource, 2.0f, 1.0f)
     }

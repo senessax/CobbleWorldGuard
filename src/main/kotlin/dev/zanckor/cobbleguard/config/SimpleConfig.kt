@@ -19,7 +19,7 @@ object SimpleConfig {
             load(configFile.inputStream())
         }
 
-        isWildPokesPassive = props.getProperty("isWildPokesPassive", "true").toBoolean()
+        isWildPokesPassive = props.getProperty("isWildPokesPassive", "false").toBoolean()
         damageMultiplier = props.getProperty("damageMultiplier", "1.0").toDoubleOrNull()?.coerceIn(0.0, 10.0) ?: 1.0
     }
 

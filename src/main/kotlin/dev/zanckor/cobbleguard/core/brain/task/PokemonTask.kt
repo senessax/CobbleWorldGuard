@@ -14,7 +14,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.LivingEntity
 import net.tslat.smartbrainlib.api.core.behaviour.ExtendedBehaviour
@@ -35,7 +34,6 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
 
         private const val MELEE_ANIMATION_DELAY = 1200L
         private const val RANGED_ATTACK_DELAY = 1000L
-
 
         private const val SPECIAL_ANIMATION = "special"
         private const val PHYSICAL_ANIMATION = "physical"

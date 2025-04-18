@@ -49,13 +49,10 @@ import net.tslat.smartbrainlib.api.core.BrainActivityGroup
 import net.tslat.smartbrainlib.api.core.SmartBrainProvider
 import net.tslat.smartbrainlib.api.core.behaviour.AllApplicableBehaviours
 import net.tslat.smartbrainlib.api.core.sensor.ExtendedSensor
+import org.jetbrains.annotations.Nullable
 import org.spongepowered.asm.mixin.Debug
 import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.Shadow
-import org.spongepowered.asm.mixin.Unique
-import org.spongepowered.asm.mixin.injection.At
-import org.spongepowered.asm.mixin.injection.Inject
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 import java.util.*
 @Mixin(PokemonEntity::class)
 @Debug(export = true, print = true)
@@ -69,7 +66,9 @@ class PokemonMixin(
     SmartBrainOwner<PokemonMixin> {
 
     @Shadow(remap = false)
-    lateinit var pokemon: Pokemon
+    @Nullable
+    @JvmField
+    var pokemon: Pokemon? = null
 
     private var hostilemonAttacker: PokemonEntity? = null
 
@@ -84,18 +83,19 @@ class PokemonMixin(
      * @return The most suitable move from the Pokémon's moveset
      */
     override fun getBestMoveAgainst(target: LivingEntity?): Move? {
-        if(pokemon.moveSet.toList().isEmpty()) return null
+        if(pokemon == null) return null
+        if(pokemon!!.moveSet.toList().isEmpty()) return null
 
         val isPokemon = target is PokemonEntity
 
         if (isPokemon) {
             val pokemonTarget = target.pokemon
-            val moves = mapMoves(pokemon.moveSet, pokemonTarget)
+            val moves = mapMoves(pokemon!!.moveSet, pokemonTarget)
                 .sortedWith { move1, move2 -> compareMoves(move1, move2) }
 
             return moves.last().first
         } else {
-            return pokemon.moveSet[random.nextIntBetweenInclusive(0, pokemon.moveSet.count() - 1)]
+            return pokemon!!.moveSet[random.nextIntBetweenInclusive(0, pokemon!!.moveSet.count() - 1)]
         }
     }
 
@@ -109,7 +109,7 @@ class PokemonMixin(
      * @param target The target entity receiving the attack
      */
     override fun usePhysicalMove(move: Move?, target: LivingEntity?) {
-        if (move == null || target == null) {
+        if (pokemon == null || move == null || target == null) {
             println("CobbleGuard Error: Invalid parameters in useRangedMove. Move: $move, Target: $target, Pokemon: $pokemon")
             return
         }
@@ -118,7 +118,7 @@ class PokemonMixin(
         applyDamageToTarget(target, calculateMoveDamage(move, target))
 
         CobbleUtil.summonHitParticles(target, CobbleUtil.HIT)
-        CobbleUtil.summonHitParticles(target, CobbleUtil.TYPE_HIT(pokemon.primaryType))
+        CobbleUtil.summonHitParticles(target, CobbleUtil.TYPE_HIT(pokemon!!.primaryType))
     }
 
     /**
@@ -130,7 +130,7 @@ class PokemonMixin(
      * @see usePhysicalMove
      */
     override fun useRangedMove(move: Move?, target: LivingEntity?) {
-        if (move == null || target == null) {
+        if (pokemon == null || move == null || target == null) {
             println("CobbleGuard Error: Invalid parameters in useRangedMove. Move: $move, Target: $target, Pokemon: $pokemon")
             return
         }
@@ -174,7 +174,7 @@ class PokemonMixin(
         // Configure and launch the projectile
         projectile.setMove(attackMove)
         projectile.setMoveDamage(calculateMoveDamage(move, target))
-        projectile.setOwner(pokemon.entity)
+        projectile.setOwner(pokemon!!.entity)
 
         val speed = projectile.getMove()?.speed ?: run {
             return@run 1F
@@ -226,7 +226,7 @@ class PokemonMixin(
         return if (target is PokemonEntity) {
             getMoveEffectiveness(move, target.pokemon.primaryType)
         } else {
-            SimpleConfig.damageMultiplier // Standard effectiveness for non-Pokémon entities
+            SimpleConfig.pokemonDamageMultiplier // Standard effectiveness for non-Pokémon entities
         }
     }
 
@@ -238,7 +238,9 @@ class PokemonMixin(
      * @return Calculated damage amount
      */
     private fun calculateDamage(basePower: Double, effectiveness: Double): Double {
-        val pokemonLevel = pokemon.level
+        if (pokemon == null) return 10.0
+
+        val pokemonLevel = pokemon!!.level
         return (basePower * effectiveness) * (pokemonLevel / 100.0) * 0.4
     }
 
@@ -249,13 +251,13 @@ class PokemonMixin(
      * @param damage Amount of damage to be applied
      */
     private fun applyDamageToTarget(target: LivingEntity, damage: Double) {
-        if (pokemon.entity == null) return
+        if (pokemon == null || pokemon!!.entity == null) return
 
-        target.hurt(damageSources().mobAttack(pokemon.entity!!), damage.toFloat())
+        target.hurt(damageSources().mobAttack(pokemon!!.entity!!), damage.toFloat())
         target.knockback(0.5, position().x - target.position().x, position().z - target.position().z)
 
         if (target.isDeadOrDying) {
-            CobbleUtil.summonEntityParticles(pokemon.entity!!, CobbleUtil.WIN_FIGHT, listOf("root"))
+            CobbleUtil.summonEntityParticles(pokemon!!.entity!!, CobbleUtil.WIN_FIGHT, listOf("root"))
         }
     }
 
@@ -267,18 +269,20 @@ class PokemonMixin(
      * @see hurt
      */
     override fun hurt(damageSource: DamageSource, f: Float): Boolean {
-        if(pokemon.entity == null) return false
+        if (pokemon == null || pokemon!!.entity == null) return false
+        val isDamageSourcePokemon = damageSource.entity is PokemonEntity
 
-        val defense = pokemon.getStat(Stats.DEFENCE).toFloat() / 300.0
-        val damage = f * (1 - defense)
+        val defense = pokemon!!.getStat(Stats.DEFENCE).toFloat() / 300.0
+        val configMultiplier = if(isDamageSourcePokemon) 1.0 else SimpleConfig.playerDamageMultiplier
+        val damage = f * (1 - defense) * configMultiplier
         val result = super.hurt(damageSource, damage.toFloat())
 
-        pokemon.currentHealth = maxOf(0, pokemon.currentHealth - damage.toInt()) // Evitar valores negativos
+        pokemon!!.currentHealth = maxOf(0, pokemon!!.currentHealth - damage.toInt()) // Evitar valores negativos
 
-        if (pokemon.currentHealth <= 0) {
+        if (pokemon!!.currentHealth <= 0) {
             return super.hurt(damageSource, Float.MAX_VALUE) // Ensure pokemon dies
-        } else if (pokemon.entity != null) {
-            pokemon.entity!!.health = pokemon.currentHealth.toFloat()
+        } else if (pokemon!!.entity != null) {
+            pokemon!!.entity!!.health = pokemon!!.currentHealth.toFloat()
         }
 
         return result
@@ -354,10 +358,12 @@ class PokemonMixin(
      * @param attacker The Pokémon that defeated this entity
      */
     private fun givePokemonExperience(attacker: Pokemon) {
+        if (pokemon == null) return
+
         val attackerBattle = BattlePokemon.safeCopyOf(attacker)
         attackerBattle.actor = PokemonBattleActor(UUID.randomUUID(), attackerBattle, 10F, RandomBattleAI())
 
-        val pokemonBattle = BattlePokemon.safeCopyOf(pokemon)
+        val pokemonBattle = BattlePokemon.safeCopyOf(pokemon!!)
         pokemonBattle.actor = PokemonBattleActor(UUID.randomUUID(), pokemonBattle, 10F, RandomBattleAI())
 
         val experienceResult = StandardExperienceCalculator.calculate(attackerBattle, pokemonBattle, 1.0)
@@ -378,7 +384,7 @@ class PokemonMixin(
      */
     @Suppress("SENSELESS_COMPARISON")
     override fun interactAt(player: Player, vec3: Vec3, interactionHand: InteractionHand): InteractionResult {
-        if (pokemon.getOwnerUUID() != player.uuid) return InteractionResult.FAIL
+        if (pokemon == null || pokemon!!.getOwnerUUID() != player.uuid) return InteractionResult.FAIL
         if (aggressivity == null) aggressivity = Aggresivity.DEFENSIVE
 
         if (!player.isShiftKeyDown && interactionHand == InteractionHand.MAIN_HAND) {
@@ -406,7 +412,9 @@ class PokemonMixin(
      * Applies knockback to the entity with a power based on Pokémon attack stat
      */
     override fun knockback(d: Double, e: Double, f: Double) {
-        val power = pokemon.attack.toFloat() / 75.0
+        if (pokemon == null) super.knockback(d, e, f)
+
+        val power = pokemon!!.attack.toFloat() / 75.0
 
         super.knockback(d * power, e * power, f * power)
     }
@@ -457,5 +465,13 @@ class PokemonMixin(
 
     override fun customServerAiStep() {
         tickBrain(this)
+    }
+
+    override fun tick() {
+        if (pokemon?.currentHealth == 0) {
+            pokemon?.entity?.health = 0F
+        }
+
+        super.tick()
     }
 }

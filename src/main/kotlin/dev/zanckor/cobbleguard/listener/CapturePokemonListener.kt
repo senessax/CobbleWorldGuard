@@ -14,7 +14,7 @@ object CapturePokemonListener {
             val player = event.pokeBall.owner
 
             if (player != null && player is Player) {
-                player.attack(event.pokemon)
+                RemoteTargetListener.setRemoteTarget(player.uuid, event.pokemon)
             }
         }
     }

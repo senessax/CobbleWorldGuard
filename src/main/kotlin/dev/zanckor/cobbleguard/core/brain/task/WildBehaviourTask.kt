@@ -2,6 +2,7 @@ package dev.zanckor.cobbleguard.core.brain.task
 
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.mojang.datafixers.util.Pair
+import dev.zanckor.cobbleguard.config.SimpleConfig
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_WILD_POKEMON_TARGET
 import dev.zanckor.cobbleguard.util.CobbleUtil
 import dev.zanckor.cobbleguard.util.Timer
@@ -40,8 +41,9 @@ class WildBehaviourTask : PokemonTask() {
         val target = pokemon.brain.getMemory(NEAREST_WILD_POKEMON_TARGET).get()
         val direction = pokemon.position().subtract(target.position()).normalize()
         val runAwayPosition = pokemon.position().add(direction.x * 10, 0.0, direction.z * 10)
+        val speedModifier = 1.6 * SimpleConfig.runAwaySpeedMultiplier
 
-        pokemon.navigation.moveTo(runAwayPosition.x, runAwayPosition.y, runAwayPosition.z, 1.6)
+        pokemon.navigation.moveTo(runAwayPosition.x, runAwayPosition.y, runAwayPosition.z, speedModifier)
     }
 
     private fun customStop(pokemon: PokemonEntity) {

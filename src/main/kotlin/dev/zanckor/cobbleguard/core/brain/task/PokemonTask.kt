@@ -6,6 +6,7 @@ import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.api.types.ElementalType
 import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.util.server
+import dev.zanckor.cobbleguard.config.SimpleConfig
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
 import dev.zanckor.cobbleguard.util.CobbleUtil
 import dev.zanckor.cobbleguard.util.Timer
@@ -42,7 +43,7 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
     /**
      * Moves the entity to a specified position with pathfinding
      *
-     * @param entity The Pokemon entity to move
+     * @param entity The Pokémon entity to move
      * @param targetPos The position to move to
      * @param minDistance Minimum distance to consider position reached
      * @return True if entity is within acceptable range of target position
@@ -120,7 +121,7 @@ abstract class PokemonTask : ExtendedBehaviour<PokemonEntity>() {
     }
 
     /**
-     * Calculates the movement speed of a Pokemon entity
+     * Calculates the movement speed of a Pokémon entity
      * @param entity The Pokemon entity
      * @return The movement speed of the entity
      * @see MIN_MOVEMENT_SPEED

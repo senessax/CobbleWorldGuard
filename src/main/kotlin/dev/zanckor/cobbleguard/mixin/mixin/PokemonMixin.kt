@@ -55,6 +55,7 @@ import org.spongepowered.asm.mixin.Debug
 import org.spongepowered.asm.mixin.Mixin
 import org.spongepowered.asm.mixin.Shadow
 import java.util.*
+
 @Mixin(PokemonEntity::class)
 @Debug(export = true, print = true)
 class PokemonMixin(
@@ -84,8 +85,8 @@ class PokemonMixin(
      * @return The most suitable move from the Pokémon's moveset
      */
     override fun getBestMoveAgainst(target: LivingEntity?): Move? {
-        if(pokemon == null) return null
-        if(pokemon!!.moveSet.toList().isEmpty()) return null
+        if (pokemon == null) return null
+        if (pokemon!!.moveSet.toList().isEmpty()) return null
 
         val isPokemon = target is PokemonEntity
 
@@ -258,6 +259,13 @@ class PokemonMixin(
         target.knockback(0.5, position().x - target.position().x, position().z - target.position().z)
 
         if (target.isDeadOrDying) {
+            // In case the target killed is not a PokemonEntity but a Mob, give the XP based on config.
+            val isMobEntity = target !is PokemonEntity
+            if (isMobEntity) pokemon!!.addExperience(
+                SidemodExperienceSource(MODID),
+                SimpleConfig.mobXPQuantity
+            )
+
             CobbleUtil.summonEntityParticles(pokemon!!.entity!!, CobbleUtil.WIN_FIGHT, listOf("root"))
         }
     }
@@ -270,11 +278,11 @@ class PokemonMixin(
      * @see hurt
      */
     override fun hurt(damageSource: DamageSource, f: Float): Boolean {
-        if (pokemon == null || pokemon!!.entity == null) return false
+        if (pokemon == null || pokemon!!.entity == null || pokemon!!.entity!!.isBattling) return false
         val isDamageSourcePokemon = damageSource.entity is PokemonEntity
 
         val defense = pokemon!!.getStat(Stats.DEFENCE).toFloat() / 300.0
-        val configMultiplier = if(isDamageSourcePokemon) 1.0 else SimpleConfig.playerDamageMultiplier
+        val configMultiplier = if (isDamageSourcePokemon) 1.0 else SimpleConfig.playerDamageMultiplier
         val damage = f * (1 - defense) * configMultiplier
         val result = super.hurt(damageSource, damage.toFloat())
 
@@ -337,7 +345,7 @@ class PokemonMixin(
      *
      * Scoring method:
      * - Multiply type effectiveness by move power
-     * - Select move with highest composite score
+     * - Select move with the highest composite score
      *
      * @param move1 First move to compare
      * @param move2 Second move to compare

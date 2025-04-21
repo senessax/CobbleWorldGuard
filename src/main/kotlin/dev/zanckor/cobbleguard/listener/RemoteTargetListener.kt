@@ -18,7 +18,7 @@ import java.util.*
 object RemoteTargetListener {
     val playerRemoteTarget = HashMap<UUID, LivingEntity?>()
 
-    private fun setRemoteTarget(playerUUID: UUID, target: LivingEntity?) {
+    fun setRemoteTarget(playerUUID: UUID, target: LivingEntity?) {
         playerRemoteTarget[playerUUID] = target
     }
 

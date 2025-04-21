@@ -27,6 +27,7 @@ import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon.Aggresivity
 import dev.zanckor.cobbleguard.mixin.mixininterface.RangedMove
 import dev.zanckor.cobbleguard.util.CobbleUtil
 import dev.zanckor.cobbleguard.util.Timer
+import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
@@ -280,6 +281,7 @@ class PokemonMixin(
         pokemon!!.currentHealth = maxOf(0, pokemon!!.currentHealth - damage.toInt()) // Evitar valores negativos
 
         if (pokemon!!.currentHealth <= 0) {
+            pokemon?.entity?.health = 0F
             return super.hurt(damageSource, Float.MAX_VALUE) // Ensure pokemon dies
         } else if (pokemon!!.entity != null) {
             pokemon!!.entity!!.health = pokemon!!.currentHealth.toFloat()
@@ -387,8 +389,10 @@ class PokemonMixin(
         if (pokemon == null || pokemon!!.getOwnerUUID() != player.uuid) return InteractionResult.FAIL
         if (aggressivity == null) aggressivity = Aggresivity.DEFENSIVE
 
-        if (!player.isShiftKeyDown && interactionHand == InteractionHand.MAIN_HAND) {
+        val customData = player.mainHandItem.get(DataComponents.CUSTOM_DATA)
+        val isGuardItem = customData?.contains("isGuardItem") == true
 
+        if (!player.isShiftKeyDown && interactionHand == InteractionHand.MAIN_HAND && isGuardItem) {
             aggressivity = aggressivity.next()
             player.sendSystemMessage(Component.literal(aggressivity.message))
         }
@@ -465,13 +469,5 @@ class PokemonMixin(
 
     override fun customServerAiStep() {
         tickBrain(this)
-    }
-
-    override fun tick() {
-        if (pokemon?.currentHealth == 0) {
-            pokemon?.entity?.health = 0F
-        }
-
-        super.tick()
     }
 }

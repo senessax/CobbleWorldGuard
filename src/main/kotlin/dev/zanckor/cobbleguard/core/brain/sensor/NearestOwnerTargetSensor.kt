@@ -70,6 +70,7 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
             AGGRESIVE -> getAggressiveTarget(pokemonEntity)
         }
 
+        // If the target is not null, return it
         if(target != null) {
             if(target is PokemonEntity) {
                 if(target.pokemon.getOwnerUUID() == pokemonEntity.pokemon.getOwnerUUID()) return null

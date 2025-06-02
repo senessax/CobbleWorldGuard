@@ -9,6 +9,7 @@ object SimpleConfig {
     var runAwaySpeedMultiplier: Double = 1.0
     var pokemonDamageMultiplier: Double = 1.0
     var playerDamageMultiplier: Double = 1.0
+    var allowedDimensions: List<String> = listOf("minecraft:the_nether")
 
     private val configFile = File("config/cobbleguard.cfg")
 
@@ -27,6 +28,9 @@ object SimpleConfig {
         runAwaySpeedMultiplier = props.getProperty("runAwaySpeedMultiplier", "1.0").toDoubleOrNull() ?: 1.0
         pokemonDamageMultiplier = props.getProperty("pokemonDamageMultiplier", "1.0").toDoubleOrNull()?.coerceIn(0.0, 10.0) ?: 1.0
         playerDamageMultiplier = props.getProperty("playerDamageMultiplier", "1.0").toDoubleOrNull()?.coerceIn(0.0, 10.0) ?: 1.0
+        allowedDimensions = props.getProperty("allowedDimensions", "minecraft:the_nether")
+            .split(",")
+            .map { it.trim() }
     }
 
     fun save() {
@@ -36,6 +40,7 @@ object SimpleConfig {
             setProperty("pokemonDamageMultiplier", pokemonDamageMultiplier.toString())
             setProperty("playerDamageMultiplier", playerDamageMultiplier.toString())
             setProperty("runAwaySpeedMultiplier", runAwaySpeedMultiplier.toString())
+            setProperty("allowedDimensions", allowedDimensions.joinToString(","))
         }
 
         configFile.parentFile.mkdirs()
@@ -47,6 +52,7 @@ object SimpleConfig {
             runAwaySpeedMultiplier - Speed multiplier applied to Pokémon on run-away.
             pokemonDamageMultiplier - Damage multiplier applied to attacks from Pokémon to Players or Mobs. (0.0 -> 10.0)
             playerDamageMultiplier - Damage multiplier applied to attacks from Players or Mobs to Pokémon. (0.0 -> 10.0)
+            allowedDimensions - Comma-separated list of allowed dimension IDs (e.g., minecraft:overworld)
         """.trimIndent()) }
     }
 }

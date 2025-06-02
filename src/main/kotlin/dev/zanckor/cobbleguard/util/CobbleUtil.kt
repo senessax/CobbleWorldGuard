@@ -313,4 +313,9 @@ object CobbleUtil {
 
         return entityData.contains("pokestop") || entityData.contains("type_pokestop")
     }
+
+    fun isWorldAllowed(level: ServerLevel): Boolean {
+        val dimId = level.dimension().location().toString()
+        return dev.zanckor.cobbleguard.config.SimpleConfig.allowedDimensions.contains(dimId)
+    }
 }

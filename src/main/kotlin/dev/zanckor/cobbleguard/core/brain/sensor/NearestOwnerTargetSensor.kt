@@ -59,8 +59,10 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
         val aggresivity = (pokemonEntity as Hostilemon).aggressivity
         val remoteTarget = RemoteTargetListener.playerRemoteTarget[pokemonEntity.pokemon.getOwnerUUID()]
 
+        // If the aggressivity is STAY or PASSIVE, return null
         if (aggresivity == STAY || aggresivity == PASSIVE) return null
 
+        // Get the target based on the aggressivity
         val target = when ((pokemonEntity as Hostilemon).aggressivity) {
             STAY, PASSIVE -> null
             HOSTILE -> getHostileTarget(pokemonEntity)
@@ -76,6 +78,7 @@ class NearestOwnerTargetSensor : ExtendedSensor<LivingEntity>() {
             return target
         }
 
+        // Otherwise, if the remote target is not null and is alive, reasign it
         if (remoteTarget != null && remoteTarget.isAlive && remoteTarget.distanceToSqr(pokemonEntity) < 240.0) {
             return reasignRemoteTarget(pokemonEntity)
         }

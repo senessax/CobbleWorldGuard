@@ -9,6 +9,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.net.messages.client.animation.PlayPosableAnimationPacket
 import com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormEntityParticlePacket
 import com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormParticlePacket
+import dev.zanckor.cobbleguard.config.SimpleConfig
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_OWNER_TARGET
 import dev.zanckor.cobbleguard.core.brain.registry.PokemonMemoryModuleType.NEAREST_WILD_POKEMON_TARGET
 import dev.zanckor.cobbleguard.mixin.mixininterface.Hostilemon
@@ -312,5 +313,15 @@ object CobbleUtil {
         entity.save(entityData)
 
         return entityData.contains("pokestop") || entityData.contains("type_pokestop")
+    }
+
+    fun isWorldAllowed(level: ServerLevel): Boolean {
+        val id = level.dimension().location().toString()
+
+        return when (SimpleConfig.dimensionFilter) {
+            SimpleConfig.DimensionFilter.ALL -> true
+            SimpleConfig.DimensionFilter.WHITELIST -> id in SimpleConfig.allowedDimensions
+            SimpleConfig.DimensionFilter.BLACKLIST -> id !in SimpleConfig.allowedDimensions
+        }
     }
 }

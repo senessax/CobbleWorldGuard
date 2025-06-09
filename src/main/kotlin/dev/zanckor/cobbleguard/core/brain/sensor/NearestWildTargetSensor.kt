@@ -34,6 +34,8 @@ class NearestWildTargetSensor : ExtendedSensor<LivingEntity>() {
     }
 
     override fun doTick(level: ServerLevel, entity: LivingEntity) {
+        if (!CobbleUtil.isWorldAllowed(level)) return
+
         val pokemonEntity = entity as? PokemonEntity ?: return
         if (pokemonEntity.pokemon.getOwnerUUID() != null) return
 

@@ -23,21 +23,29 @@ class CommandRegistry {
                 Commands.literal("cobbleguard")
                     .then(
                         Commands.literal("wand")
+                            .requires { it.hasPermission(2) }
                             .executes { context ->
                                 val player = context.source.player
                                 val item = ItemStack(Items.STICK)
                                 val nbt = CompoundTag()
                                 nbt.putBoolean("isGuardItem", true)
-
                                 item.set(DataComponents.CUSTOM_DATA, CustomData.of(nbt))
-
                                 player!!.inventory.add(item)
-
                                 1
                             }
                     )
-            )
-        })
+                    .then(
+                        Commands.literal("reload")
+                            .requires { it.hasPermission(2) }
+                            .executes { context ->
+                                dev.zanckor.cobbleguard.config.SimpleConfig.reload()
+                                context.source.sendSuccess({ net.minecraft.network.chat.Component.literal("CobbleGuard config reloaded.") }, false)
+                                1
+                            }
+                    )
+                )
+            }
+        )
     }
 
     companion object {

@@ -23,7 +23,6 @@ class CommandRegistry {
                 Commands.literal("cobbleguard")
                     .then(
                         Commands.literal("wand")
-                            .requires { it.hasPermission(2) }
                             .executes { context ->
                                 val player = context.source.player
                                 val item = ItemStack(Items.STICK)
